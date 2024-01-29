@@ -25,4 +25,16 @@ services:
             - '${PORT}:${PORT}'
         volumes:
             - ~/.flowise:/root/.flowise
+            - ~/input_code:/input_code
+            - ~/output_code:/output_code
+            - ~/input_docs:/input_docs
+            - ~/output_docs:/output_docs
+        networks:
+            - flowise_net 
         command: /bin/sh -c "sleep 3; flowise start"
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+networks:
+    flowise_net:
+        name: chroma_net
+        external: true
