@@ -1,14 +1,9 @@
-import { ChainValues, AgentStep, BaseMessage } from 'langchain/schema'
+import { ICommonObject, INode, INodeData, INodeParams } from '../../../src/Interface'
+import { initializeAgentExecutorWithOptions, AgentExecutor } from 'langchain/agents'
+import { getBaseClasses, mapChatHistory } from '../../../src/utils'
 import { flatten } from 'lodash'
-import { ChatOpenAI } from 'langchain/chat_models/openai'
-import { ChatPromptTemplate, MessagesPlaceholder } from 'langchain/prompts'
-import { formatToOpenAIFunction } from 'langchain/tools'
-import { RunnableSequence } from 'langchain/schema/runnable'
-import { FlowiseMemory, ICommonObject, IMessage, INode, INodeData, INodeParams } from '../../../src/Interface'
-import { getBaseClasses } from '../../../src/utils'
+import { BaseChatMemory } from 'langchain/memory'
 import { ConsoleCallbackHandler, CustomChainHandler, additionalCallbacks } from '../../../src/handler'
-import { OpenAIFunctionsAgentOutputParser } from 'langchain/agents/openai/output_parser'
-import { AgentExecutor, formatAgentSteps } from '../../../src/agents'
 
 const defaultMessage = `Do your best to answer the questions. Feel free to use any tools available to look up relevant information, only if necessary.`
 
@@ -22,9 +17,8 @@ class ConversationalRetrievalAgent_Agents implements INode {
     category: string
     baseClasses: string[]
     inputs: INodeParams[]
-    sessionId?: string
 
-    constructor(fields?: { sessionId?: string }) {
+    constructor() {
         this.label = 'Conversational Retrieval Agent'
         this.name = 'conversationalRetrievalAgent'
         this.version = 3.0
@@ -60,96 +54,55 @@ class ConversationalRetrievalAgent_Agents implements INode {
                 additionalParams: true
             }
         ]
-        this.sessionId = fields?.sessionId
     }
 
-    async init(nodeData: INodeData, input: string, options: ICommonObject): Promise<any> {
-        return prepareAgent(nodeData, { sessionId: this.sessionId, chatId: options.chatId, input }, options.chatHistory)
+    async init(nodeData: INodeData): Promise<any> {
+        const model = nodeData.inputs?.model
+        const memory = nodeData.inputs?.memory as BaseChatMemory
+        const systemMessage = nodeData.inputs?.systemMessage as string
+
+        let tools = nodeData.inputs?.tools
+        tools = flatten(tools)
+
+        const executor = await initializeAgentExecutorWithOptions(tools, model, {
+            agentType: 'openai-functions',
+            verbose: process.env.DEBUG === 'true' ? true : false,
+            agentArgs: {
+                prefix: systemMessage ?? defaultMessage
+            },
+            returnIntermediateSteps: true
+        })
+        executor.memory = memory
+        return executor
     }
 
     async run(nodeData: INodeData, input: string, options: ICommonObject): Promise<string> {
-        const memory = nodeData.inputs?.memory as FlowiseMemory
-        const executor = prepareAgent(nodeData, { sessionId: this.sessionId, chatId: options.chatId, input }, options.chatHistory)
+        const executor = nodeData.instance as AgentExecutor
+
+        if (executor.memory) {
+            ;(executor.memory as any).memoryKey = 'chat_history'
+            ;(executor.memory as any).outputKey = 'output'
+            ;(executor.memory as any).returnMessages = true
+
+            const chatHistoryClassName = (executor.memory as any).chatHistory.constructor.name
+            // Only replace when its In-Memory
+            if (chatHistoryClassName && chatHistoryClassName === 'ChatMessageHistory') {
+                ;(executor.memory as any).chatHistory = mapChatHistory(options)
+            }
+        }
 
         const loggerHandler = new ConsoleCallbackHandler(options.logger)
         const callbacks = await additionalCallbacks(nodeData, options)
 
-        let res: ChainValues = {}
-
         if (options.socketIO && options.socketIOClientId) {
             const handler = new CustomChainHandler(options.socketIO, options.socketIOClientId)
-            res = await executor.invoke({ input }, { callbacks: [loggerHandler, handler, ...callbacks] })
+            const result = await executor.call({ input }, [loggerHandler, handler, ...callbacks])
+            return result?.output
         } else {
-            res = await executor.invoke({ input }, { callbacks: [loggerHandler, ...callbacks] })
+            const result = await executor.call({ input }, [loggerHandler, ...callbacks])
+            return result?.output
         }
-
-        await memory.addChatMessages(
-            [
-                {
-                    text: input,
-                    type: 'userMessage'
-                },
-                {
-                    text: res?.output,
-                    type: 'apiMessage'
-                }
-            ],
-            this.sessionId
-        )
-
-        return res?.output
     }
-}
-
-const prepareAgent = (
-    nodeData: INodeData,
-    flowObj: { sessionId?: string; chatId?: string; input?: string },
-    chatHistory: IMessage[] = []
-) => {
-    const model = nodeData.inputs?.model as ChatOpenAI
-    const memory = nodeData.inputs?.memory as FlowiseMemory
-    const systemMessage = nodeData.inputs?.systemMessage as string
-    let tools = nodeData.inputs?.tools
-    tools = flatten(tools)
-    const memoryKey = memory.memoryKey ? memory.memoryKey : 'chat_history'
-    const inputKey = memory.inputKey ? memory.inputKey : 'input'
-
-    const prompt = ChatPromptTemplate.fromMessages([
-        ['ai', systemMessage ? systemMessage : defaultMessage],
-        new MessagesPlaceholder(memoryKey),
-        ['human', `{${inputKey}}`],
-        new MessagesPlaceholder('agent_scratchpad')
-    ])
-
-    const modelWithFunctions = model.bind({
-        functions: [...tools.map((tool: any) => formatToOpenAIFunction(tool))]
-    })
-
-    const runnableAgent = RunnableSequence.from([
-        {
-            [inputKey]: (i: { input: string; steps: AgentStep[] }) => i.input,
-            agent_scratchpad: (i: { input: string; steps: AgentStep[] }) => formatAgentSteps(i.steps),
-            [memoryKey]: async (_: { input: string; steps: AgentStep[] }) => {
-                const messages = (await memory.getChatMessages(flowObj?.sessionId, true, chatHistory)) as BaseMessage[]
-                return messages ?? []
-            }
-        },
-        prompt,
-        modelWithFunctions,
-        new OpenAIFunctionsAgentOutputParser()
-    ])
-
-    const executor = AgentExecutor.fromAgentAndTools({
-        agent: runnableAgent,
-        tools,
-        sessionId: flowObj?.sessionId,
-        chatId: flowObj?.chatId,
-        input: flowObj?.input,
-        returnIntermediateSteps: true,
-        verbose: process.env.DEBUG === 'true' ? true : false
-    })
-
-    return executor
 }
 
 module.exports = { nodeClass: ConversationalRetrievalAgent_Agents }

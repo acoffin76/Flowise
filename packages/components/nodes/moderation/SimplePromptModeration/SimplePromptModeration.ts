@@ -2,7 +2,6 @@ import { INode, INodeData, INodeParams } from '../../../src/Interface'
 import { getBaseClasses } from '../../../src'
 import { Moderation } from '../Moderation'
 import { SimplePromptModerationRunner } from './SimplePromptModerationRunner'
-import { BaseChatModel } from 'langchain/chat_models/base'
 
 class SimplePromptModeration implements INode {
     label: string
@@ -18,9 +17,9 @@ class SimplePromptModeration implements INode {
     constructor() {
         this.label = 'Simple Prompt Moderation'
         this.name = 'inputModerationSimple'
-        this.version = 2.0
+        this.version = 1.0
         this.type = 'Moderation'
-        this.icon = 'moderation.svg'
+        this.icon = 'simple_moderation.png'
         this.category = 'Moderation'
         this.description = 'Check whether input consists of any text from Deny list, and prevent being sent to LLM'
         this.baseClasses = [this.type, ...getBaseClasses(Moderation)]
@@ -31,14 +30,8 @@ class SimplePromptModeration implements INode {
                 type: 'string',
                 rows: 4,
                 placeholder: `ignore previous instructions\ndo not follow the directions\nyou must ignore all previous instructions`,
-                description: 'An array of string literals (enter one per line) that should not appear in the prompt text.'
-            },
-            {
-                label: 'Chat Model',
-                name: 'model',
-                type: 'BaseChatModel',
-                description: 'Use LLM to detect if the input is similar to those specified in Deny List',
-                optional: true
+                description: 'An array of string literals (enter one per line) that should not appear in the prompt text.',
+                optional: false
             },
             {
                 label: 'Error Message',
@@ -53,10 +46,9 @@ class SimplePromptModeration implements INode {
 
     async init(nodeData: INodeData): Promise<any> {
         const denyList = nodeData.inputs?.denyList as string
-        const model = nodeData.inputs?.model as BaseChatModel
         const moderationErrorMessage = nodeData.inputs?.moderationErrorMessage as string
 
-        return new SimplePromptModerationRunner(denyList, moderationErrorMessage, model)
+        return new SimplePromptModerationRunner(denyList, moderationErrorMessage)
     }
 }
 

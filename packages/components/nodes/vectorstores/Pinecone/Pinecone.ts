@@ -5,7 +5,6 @@ import { Embeddings } from 'langchain/embeddings/base'
 import { Document } from 'langchain/document'
 import { ICommonObject, INode, INodeData, INodeOutputsValue, INodeParams } from '../../../src/Interface'
 import { getBaseClasses, getCredentialData, getCredentialParam } from '../../../src/utils'
-import { addMMRInputParams, resolveVectorStoreOrRetriever } from '../VectorStoreUtils'
 
 class Pinecone_VectorStores implements INode {
     label: string
@@ -24,11 +23,11 @@ class Pinecone_VectorStores implements INode {
     constructor() {
         this.label = 'Pinecone'
         this.name = 'pinecone'
-        this.version = 2.0
+        this.version = 1.0
         this.type = 'Pinecone'
-        this.icon = 'pinecone.svg'
+        this.icon = 'pinecone.png'
         this.category = 'Vector Stores'
-        this.description = `Upsert embedded data and perform similarity or mmr search using Pinecone, a leading fully managed hosted vector database`
+        this.description = `Upsert embedded data and perform similarity search upon query using Pinecone, a leading fully managed hosted vector database`
         this.baseClasses = [this.type, 'VectorStoreRetriever', 'BaseRetriever']
         this.badge = 'NEW'
         this.credential = {
@@ -80,7 +79,6 @@ class Pinecone_VectorStores implements INode {
                 optional: true
             }
         ]
-        addMMRInputParams(this.inputs)
         this.outputs = [
             {
                 label: 'Pinecone Retriever',
@@ -105,9 +103,11 @@ class Pinecone_VectorStores implements INode {
 
             const credentialData = await getCredentialData(nodeData.credential ?? '', options)
             const pineconeApiKey = getCredentialParam('pineconeApiKey', credentialData, nodeData)
+            const pineconeEnv = getCredentialParam('pineconeEnv', credentialData, nodeData)
 
             const client = new Pinecone({
-                apiKey: pineconeApiKey
+                apiKey: pineconeApiKey,
+                environment: pineconeEnv
             })
 
             const pineconeIndex = client.Index(index)
@@ -140,12 +140,17 @@ class Pinecone_VectorStores implements INode {
         const pineconeMetadataFilter = nodeData.inputs?.pineconeMetadataFilter
         const docs = nodeData.inputs?.document as Document[]
         const embeddings = nodeData.inputs?.embeddings as Embeddings
+        const output = nodeData.outputs?.output as string
+        const topK = nodeData.inputs?.topK as string
+        const k = topK ? parseFloat(topK) : 4
 
         const credentialData = await getCredentialData(nodeData.credential ?? '', options)
         const pineconeApiKey = getCredentialParam('pineconeApiKey', credentialData, nodeData)
+        const pineconeEnv = getCredentialParam('pineconeEnv', credentialData, nodeData)
 
         const client = new Pinecone({
-            apiKey: pineconeApiKey
+            apiKey: pineconeApiKey,
+            environment: pineconeEnv
         })
 
         const pineconeIndex = client.Index(index)
@@ -170,7 +175,14 @@ class Pinecone_VectorStores implements INode {
 
         const vectorStore = await PineconeStore.fromExistingIndex(embeddings, obj)
 
-        return resolveVectorStoreOrRetriever(nodeData, vectorStore)
+        if (output === 'retriever') {
+            const retriever = vectorStore.asRetriever(k)
+            return retriever
+        } else if (output === 'vectorStore') {
+            ;(vectorStore as any).k = k
+            return vectorStore
+        }
+        return vectorStore
     }
 }
 

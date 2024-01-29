@@ -5,7 +5,6 @@ import { Embeddings } from 'langchain/embeddings/base'
 import { ICommonObject, INode, INodeData, INodeOutputsValue, INodeParams } from '../../../src/Interface'
 import { getBaseClasses, getCredentialData, getCredentialParam } from '../../../src/utils'
 import { SupabaseLibArgs, SupabaseVectorStore } from 'langchain/vectorstores/supabase'
-import { addMMRInputParams, resolveVectorStoreOrRetriever } from '../VectorStoreUtils'
 
 class Supabase_VectorStores implements INode {
     label: string
@@ -24,11 +23,11 @@ class Supabase_VectorStores implements INode {
     constructor() {
         this.label = 'Supabase'
         this.name = 'supabase'
-        this.version = 2.0
+        this.version = 1.0
         this.type = 'Supabase'
         this.icon = 'supabase.svg'
         this.category = 'Vector Stores'
-        this.description = 'Upsert embedded data and perform similarity or mmr search upon query using Supabase via pgvector extension'
+        this.description = 'Upsert embedded data and perform similarity search upon query using Supabase via pgvector extension'
         this.baseClasses = [this.type, 'VectorStoreRetriever', 'BaseRetriever']
         this.badge = 'NEW'
         this.credential = {
@@ -82,7 +81,6 @@ class Supabase_VectorStores implements INode {
                 optional: true
             }
         ]
-        addMMRInputParams(this.inputs)
         this.outputs = [
             {
                 label: 'Supabase Retriever',
@@ -137,6 +135,9 @@ class Supabase_VectorStores implements INode {
         const queryName = nodeData.inputs?.queryName as string
         const embeddings = nodeData.inputs?.embeddings as Embeddings
         const supabaseMetadataFilter = nodeData.inputs?.supabaseMetadataFilter
+        const output = nodeData.outputs?.output as string
+        const topK = nodeData.inputs?.topK as string
+        const k = topK ? parseFloat(topK) : 4
 
         const credentialData = await getCredentialData(nodeData.credential ?? '', options)
         const supabaseApiKey = getCredentialParam('supabaseApiKey', credentialData, nodeData)
@@ -156,7 +157,14 @@ class Supabase_VectorStores implements INode {
 
         const vectorStore = await SupabaseVectorStore.fromExistingIndex(embeddings, obj)
 
-        return resolveVectorStoreOrRetriever(nodeData, vectorStore)
+        if (output === 'retriever') {
+            const retriever = vectorStore.asRetriever(k)
+            return retriever
+        } else if (output === 'vectorStore') {
+            ;(vectorStore as any).k = k
+            return vectorStore
+        }
+        return vectorStore
     }
 }
 

@@ -31,7 +31,7 @@ export abstract class MongoDBSearchBase {
 
     protected constructor() {
         this.type = 'MongoDB Atlas'
-        this.icon = 'mongodb.svg'
+        this.icon = 'mongodb.png'
         this.category = 'Vector Stores'
         this.baseClasses = [this.type, 'VectorStoreRetriever', 'BaseRetriever']
         this.badge = 'DEPRECATING'

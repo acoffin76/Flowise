@@ -32,7 +32,6 @@ import { baseURL, maxScroll } from 'store/constant'
 
 import robotPNG from 'assets/images/robot.png'
 import userPNG from 'assets/images/account.png'
-import StarterPromptsCard from '../../ui-component/cards/StarterPromptsCard'
 import { isValidURL, removeDuplicateURL, setLocalStorageChatflow } from 'utils/genericHelper'
 
 export const ChatMessage = ({ open, chatflowid, isDialog }) => {
@@ -58,9 +57,6 @@ export const ChatMessage = ({ open, chatflowid, isDialog }) => {
     const inputRef = useRef(null)
     const getChatmessageApi = useApi(chatmessageApi.getInternalChatmessageFromChatflow)
     const getIsChatflowStreamingApi = useApi(chatflowsApi.getIsChatflowStreaming)
-    const getChatflowConfig = useApi(chatflowsApi.getSpecificChatflow)
-
-    const [starterPrompts, setStarterPrompts] = useState([])
 
     const onSourceDialogClick = (data, title) => {
         setSourceDialogProps({ data, title })
@@ -108,30 +104,21 @@ export const ChatMessage = ({ open, chatflowid, isDialog }) => {
         }, 100)
     }
 
-    const handlePromptClick = async (promptStarterInput) => {
-        setUserInput(promptStarterInput)
-        handleSubmit(undefined, promptStarterInput)
-    }
-
     // Handle form submission
-    const handleSubmit = async (e, promptStarterInput) => {
-        if (e) e.preventDefault()
+    const handleSubmit = async (e) => {
+        e.preventDefault()
 
-        if (!promptStarterInput && userInput.trim() === '') {
+        if (userInput.trim() === '') {
             return
         }
 
-        let input = userInput
-
-        if (promptStarterInput !== undefined && promptStarterInput.trim() !== '') input = promptStarterInput
-
         setLoading(true)
-        setMessages((prevMessages) => [...prevMessages, { message: input, type: 'userMessage' }])
+        setMessages((prevMessages) => [...prevMessages, { message: userInput, type: 'userMessage' }])
 
         // Send user question and history to API
         try {
             const params = {
-                question: input,
+                question: userInput,
                 history: messages.filter((msg) => msg.message !== 'Hi there! How can I help?'),
                 chatId
             }
@@ -236,26 +223,9 @@ export const ChatMessage = ({ open, chatflowid, isDialog }) => {
         if (getIsChatflowStreamingApi.data) {
             setIsChatFlowAvailableToStream(getIsChatflowStreamingApi.data?.isStreaming ?? false)
         }
+
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [getIsChatflowStreamingApi.data])
-
-    useEffect(() => {
-        if (getChatflowConfig.data) {
-            if (getChatflowConfig.data?.chatbotConfig && JSON.parse(getChatflowConfig.data?.chatbotConfig)) {
-                let config = JSON.parse(getChatflowConfig.data?.chatbotConfig)
-                if (config.starterPrompts) {
-                    let inputFields = []
-                    Object.getOwnPropertyNames(config.starterPrompts).forEach((key) => {
-                        if (config.starterPrompts[key]) {
-                            inputFields.push(config.starterPrompts[key])
-                        }
-                    })
-                    setStarterPrompts(inputFields)
-                }
-            }
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [getChatflowConfig.data])
 
     // Auto scroll chat to bottom
     useEffect(() => {
@@ -275,7 +245,6 @@ export const ChatMessage = ({ open, chatflowid, isDialog }) => {
         if (open && chatflowid) {
             getChatmessageApi.request(chatflowid)
             getIsChatflowStreamingApi.request(chatflowid)
-            getChatflowConfig.request(chatflowid)
             scrollToBottom()
 
             socket = socketIOClient(baseURL)
@@ -443,13 +412,7 @@ export const ChatMessage = ({ open, chatflowid, isDialog }) => {
                         })}
                 </div>
             </div>
-
-            <div style={{ position: 'relative' }}>
-                {messages && messages.length === 1 && (
-                    <StarterPromptsCard starterPrompts={starterPrompts || []} onPromptClick={handlePromptClick} isGrid={isDialog} />
-                )}
-                <Divider />
-            </div>
+            <Divider />
             <div className='center'>
                 <div style={{ width: '100%' }}>
                     <form style={{ width: '100%' }} onSubmit={handleSubmit}>

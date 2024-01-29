@@ -16,6 +16,11 @@ class PineconeApi implements INodeCredential {
                 label: 'Pinecone Api Key',
                 name: 'pineconeApiKey',
                 type: 'password'
+            },
+            {
+                label: 'Pinecone Environment',
+                name: 'pineconeEnv',
+                type: 'string'
             }
         ]
     }

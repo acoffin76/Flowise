@@ -264,23 +264,13 @@
                         "type": "BaseLLMOutputParser",
                         "optional": true,
                         "id": "llmChain_2-input-outputParser-BaseLLMOutputParser"
-                    },
-                    {
-                        "label": "Input Moderation",
-                        "description": "Detect text that could generate harmful output and prevent it from being sent to the language model",
-                        "name": "inputModeration",
-                        "type": "Moderation",
-                        "optional": true,
-                        "list": true,
-                        "id": "llmChain_2-input-inputModeration-Moderation"
                     }
                 ],
                 "inputs": {
                     "model": "{{chatOpenAI_0.data.instance}}",
                     "prompt": "{{promptTemplate_0.data.instance}}",
                     "outputParser": "",
-                    "chainName": "RephraseQuestion",
-                    "inputModeration": ""
+                    "chainName": "RephraseQuestion"
                 },
                 "outputAnchors": [
                     {
@@ -363,23 +353,13 @@
                         "type": "BaseLLMOutputParser",
                         "optional": true,
                         "id": "llmChain_1-input-outputParser-BaseLLMOutputParser"
-                    },
-                    {
-                        "label": "Input Moderation",
-                        "description": "Detect text that could generate harmful output and prevent it from being sent to the language model",
-                        "name": "inputModeration",
-                        "type": "Moderation",
-                        "optional": true,
-                        "list": true,
-                        "id": "llmChain_1-input-inputModeration-Moderation"
                     }
                 ],
                 "inputs": {
                     "model": "{{chatOpenAI_1.data.instance}}",
                     "prompt": "{{chatPromptTemplate_0.data.instance}}",
                     "outputParser": "",
-                    "chainName": "FinalResponse",
-                    "inputModeration": ""
+                    "chainName": "FinalResponse"
                 },
                 "outputAnchors": [
                     {
@@ -427,7 +407,7 @@
             "data": {
                 "id": "chatOpenAI_0",
                 "label": "ChatOpenAI",
-                "version": 3,
+                "version": 2,
                 "name": "chatOpenAI",
                 "type": "ChatOpenAI",
                 "baseClasses": ["ChatOpenAI", "BaseChatModel", "BaseLanguageModel", "Runnable"],
@@ -449,14 +429,6 @@
                             {
                                 "label": "gpt-4",
                                 "name": "gpt-4"
-                            },
-                            {
-                                "label": "gpt-4-turbo-preview",
-                                "name": "gpt-4-turbo-preview"
-                            },
-                            {
-                                "label": "gpt-4-0125-preview",
-                                "name": "gpt-4-0125-preview"
                             },
                             {
                                 "label": "gpt-4-1106-preview",
@@ -625,7 +597,7 @@
             "data": {
                 "id": "chatOpenAI_1",
                 "label": "ChatOpenAI",
-                "version": 3,
+                "version": 2,
                 "name": "chatOpenAI",
                 "type": "ChatOpenAI",
                 "baseClasses": ["ChatOpenAI", "BaseChatModel", "BaseLanguageModel", "Runnable"],
@@ -647,14 +619,6 @@
                             {
                                 "label": "gpt-4",
                                 "name": "gpt-4"
-                            },
-                            {
-                                "label": "gpt-4-turbo-preview",
-                                "name": "gpt-4-turbo-preview"
-                            },
-                            {
-                                "label": "gpt-4-0125-preview",
-                                "name": "gpt-4-0125-preview"
                             },
                             {
                                 "label": "gpt-4-1106-preview",
@@ -970,7 +934,7 @@
             "data": {
                 "id": "openAIEmbeddings_0",
                 "label": "OpenAI Embeddings",
-                "version": 2,
+                "version": 1,
                 "name": "openAIEmbeddings",
                 "type": "OpenAIEmbeddings",
                 "baseClasses": ["OpenAIEmbeddings", "Embeddings"],
@@ -983,28 +947,6 @@
                         "type": "credential",
                         "credentialNames": ["openAIApi"],
                         "id": "openAIEmbeddings_0-input-credential-credential"
-                    },
-                    {
-                        "label": "Model Name",
-                        "name": "modelName",
-                        "type": "options",
-                        "options": [
-                            {
-                                "label": "text-embedding-3-large",
-                                "name": "text-embedding-3-large"
-                            },
-                            {
-                                "label": "text-embedding-3-small",
-                                "name": "text-embedding-3-small"
-                            },
-                            {
-                                "label": "text-embedding-ada-002",
-                                "name": "text-embedding-ada-002"
-                            }
-                        ],
-                        "default": "text-embedding-ada-002",
-                        "optional": true,
-                        "id": "openAIEmbeddings_0-input-modelName-options"
                     },
                     {
                         "label": "Strip New Lines",
@@ -1044,8 +986,7 @@
                     "stripNewLines": "",
                     "batchSize": "",
                     "timeout": "",
-                    "basepath": "",
-                    "modelName": "text-embedding-ada-002"
+                    "basepath": ""
                 },
                 "outputAnchors": [
                     {

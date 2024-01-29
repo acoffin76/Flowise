@@ -23,7 +23,7 @@ class Postgres_Existing_VectorStores implements INode {
     constructor() {
         this.label = 'Postgres Load Existing Index'
         this.name = 'postgresExistingIndex'
-        this.version = 2.0
+        this.version = 1.0
         this.type = 'Postgres'
         this.icon = 'postgres.svg'
         this.category = 'Vector Stores'
@@ -51,13 +51,6 @@ class Postgres_Existing_VectorStores implements INode {
                 label: 'Database',
                 name: 'database',
                 type: 'string'
-            },
-            {
-                label: 'SSL Connection',
-                name: 'sslConnection',
-                type: 'boolean',
-                default: false,
-                optional: false
             },
             {
                 label: 'Port',
@@ -116,7 +109,6 @@ class Postgres_Existing_VectorStores implements INode {
         const output = nodeData.outputs?.output as string
         const topK = nodeData.inputs?.topK as string
         const k = topK ? parseFloat(topK) : 4
-        const sslConnection = nodeData.inputs?.sslConnection as boolean
 
         let additionalConfiguration = {}
         if (additionalConfig) {
@@ -134,8 +126,7 @@ class Postgres_Existing_VectorStores implements INode {
             port: nodeData.inputs?.port as number,
             username: user,
             password: password,
-            database: nodeData.inputs?.database as string,
-            ssl: sslConnection
+            database: nodeData.inputs?.database as string
         }
 
         const args = {

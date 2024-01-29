@@ -5,7 +5,6 @@ import { Embeddings } from 'langchain/embeddings/base'
 import { Document } from 'langchain/document'
 import { ICommonObject, INode, INodeData, INodeOutputsValue, INodeParams } from '../../../src/Interface'
 import { getBaseClasses, getCredentialData, getCredentialParam } from '../../../src/utils'
-import { addMMRInputParams, resolveVectorStoreOrRetriever } from '../VectorStoreUtils'
 
 class Zep_VectorStores implements INode {
     label: string
@@ -24,12 +23,12 @@ class Zep_VectorStores implements INode {
     constructor() {
         this.label = 'Zep'
         this.name = 'zep'
-        this.version = 2.0
+        this.version = 1.0
         this.type = 'Zep'
-        this.icon = 'zep.svg'
+        this.icon = 'zep.png'
         this.category = 'Vector Stores'
         this.description =
-            'Upsert embedded data and perform similarity or mmr search upon query using Zep, a fast and scalable building block for LLM apps'
+            'Upsert embedded data and perform similarity search upon query using Zep, a fast and scalable building block for LLM apps'
         this.baseClasses = [this.type, 'VectorStoreRetriever', 'BaseRetriever']
         this.badge = 'NEW'
         this.credential = {
@@ -89,7 +88,6 @@ class Zep_VectorStores implements INode {
                 optional: true
             }
         ]
-        addMMRInputParams(this.inputs)
         this.outputs = [
             {
                 label: 'Zep Retriever',
@@ -146,6 +144,9 @@ class Zep_VectorStores implements INode {
         const zepMetadataFilter = nodeData.inputs?.zepMetadataFilter
         const dimension = nodeData.inputs?.dimension as number
         const embeddings = nodeData.inputs?.embeddings as Embeddings
+        const output = nodeData.outputs?.output as string
+        const topK = nodeData.inputs?.topK as string
+        const k = topK ? parseFloat(topK) : 4
 
         const credentialData = await getCredentialData(nodeData.credential ?? '', options)
         const apiKey = getCredentialParam('apiKey', credentialData, nodeData)
@@ -164,7 +165,14 @@ class Zep_VectorStores implements INode {
 
         const vectorStore = await ZepExistingVS.fromExistingIndex(embeddings, zepConfig)
 
-        return resolveVectorStoreOrRetriever(nodeData, vectorStore)
+        if (output === 'retriever') {
+            const retriever = vectorStore.asRetriever(k)
+            return retriever
+        } else if (output === 'vectorStore') {
+            ;(vectorStore as any).k = k
+            return vectorStore
+        }
+        return vectorStore
     }
 }
 
@@ -202,7 +210,7 @@ class ZepExistingVS extends ZepVectorStore {
         this.args = args
     }
 
-    async initializeCollection(args: IZepConfig & Partial<ZepFilter>) {
+    async initalizeCollection(args: IZepConfig & Partial<ZepFilter>) {
         this.client = await ZepClient.init(args.apiUrl, args.apiKey)
         try {
             this.collection = await this.client.document.getCollection(args.collectionName)
@@ -251,7 +259,7 @@ class ZepExistingVS extends ZepVectorStore {
         const newfilter = {
             where: { and: ANDFilters }
         }
-        await this.initializeCollection(this.args!).catch((err) => {
+        await this.initalizeCollection(this.args!).catch((err) => {
             console.error('Error initializing collection:', err)
             throw err
         })

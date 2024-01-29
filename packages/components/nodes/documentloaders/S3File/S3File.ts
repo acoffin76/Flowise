@@ -30,7 +30,7 @@ class S3_DocumentLoaders implements INode {
     constructor() {
         this.label = 'S3'
         this.name = 'S3'
-        this.version = 2.0
+        this.version = 1.0
         this.type = 'Document'
         this.icon = 's3.svg'
         this.category = 'Document Loaders'
@@ -113,62 +113,12 @@ class S3_DocumentLoaders implements INode {
                 optional: true
             },
             {
-                label: 'Element Type',
-                name: 'elementType',
+                label: 'NarrativeText Only',
+                name: 'narrativeTextOnly',
                 description:
-                    'Unstructured partition document into different types, select the types to return. If not selected, all types will be returned',
-                type: 'multiOptions',
-                options: [
-                    {
-                        label: 'FigureCaption',
-                        name: 'FigureCaption'
-                    },
-                    {
-                        label: 'NarrativeText',
-                        name: 'NarrativeText'
-                    },
-                    {
-                        label: 'ListItem',
-                        name: 'ListItem'
-                    },
-                    {
-                        label: 'Title',
-                        name: 'Title'
-                    },
-                    {
-                        label: 'Address',
-                        name: 'Address'
-                    },
-                    {
-                        label: 'Table',
-                        name: 'Table'
-                    },
-                    {
-                        label: 'PageBreak',
-                        name: 'PageBreak'
-                    },
-                    {
-                        label: 'Header',
-                        name: 'Header'
-                    },
-                    {
-                        label: 'Footer',
-                        name: 'Footer'
-                    },
-                    {
-                        label: 'UncategorizedText',
-                        name: 'UncategorizedText'
-                    },
-                    {
-                        label: 'Image',
-                        name: 'Image'
-                    },
-                    {
-                        label: 'Formula',
-                        name: 'Formula'
-                    }
-                ],
-                default: [],
+                    'Only load documents with NarrativeText metadata from Unstructured. See how Unstructured partition data <a target="_blank" href="https://unstructured-io.github.io/unstructured/bricks/partition.html#">here</a>',
+                default: true,
+                type: 'boolean',
                 optional: true,
                 additionalParams: true
             },
@@ -188,7 +138,7 @@ class S3_DocumentLoaders implements INode {
         const unstructuredAPIUrl = nodeData.inputs?.unstructuredAPIUrl as string
         const unstructuredAPIKey = nodeData.inputs?.unstructuredAPIKey as string
         const metadata = nodeData.inputs?.metadata
-        const elementType = nodeData.inputs?.elementType as string
+        const narrativeTextOnly = nodeData.inputs?.narrativeTextOnly as boolean
 
         const credentialData = await getCredentialData(nodeData.credential ?? '', options)
         const accessKeyId = getCredentialParam('awsKey', credentialData, nodeData)
@@ -212,20 +162,8 @@ class S3_DocumentLoaders implements INode {
             accessKeyId?: string
             secretAccessKey?: string
         } = {
-            region,
-            credentials: {
-                accessKeyId,
-                secretAccessKey
-            }
-        }
-
-        let elementTypes: string[] = []
-        if (elementType) {
-            try {
-                elementTypes = JSON.parse(elementType)
-            } catch (e) {
-                elementTypes = []
-            }
+            accessKeyId,
+            secretAccessKey
         }
 
         loader.load = async () => {
@@ -294,10 +232,10 @@ class S3_DocumentLoaders implements INode {
                     }
                 }
             })
-            return elementTypes.length ? finaldocs.filter((doc) => elementTypes.includes(doc.metadata.category)) : finaldocs
+            return narrativeTextOnly ? finaldocs.filter((doc) => doc.metadata.category === 'NarrativeText') : finaldocs
         }
 
-        return elementTypes.length ? docs.filter((doc) => elementTypes.includes(doc.metadata.category)) : docs
+        return narrativeTextOnly ? docs.filter((doc) => doc.metadata.category === 'NarrativeText') : docs
     }
 }
 module.exports = { nodeClass: S3_DocumentLoaders }

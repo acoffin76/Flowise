@@ -145,40 +145,25 @@ Flowise 支持不同的环境变量来配置您的实例。您可以在 `package
 
 ## 🌐 自托管
 
-在您现有的基础设施中部署自托管的 Flowise，我们支持各种[部署](https://docs.flowiseai.com/configuration/deployment)
+### [Railway](https://docs.flowiseai.com/deployment/railway)
 
--   [AWS](https://docs.flowiseai.com/deployment/aws)
--   [Azure](https://docs.flowiseai.com/deployment/azure)
--   [Digital Ocean](https://docs.flowiseai.com/deployment/digital-ocean)
--   [GCP](https://docs.flowiseai.com/deployment/gcp)
--   <details>
-      <summary>其他</summary>
+[![在 Railway 上部署](https://railway.app/button.svg)](https://railway.app/template/pn4G8S?referralCode=WVNPD9)
 
-    -   [Railway](https://docs.flowiseai.com/deployment/railway)
+### [Render](https://docs.flowiseai.com/deployment/render)
 
-        [![在 Railway 上部署](https://railway.app/button.svg)](https://railway.app/template/pn4G8S?referralCode=WVNPD9)
+[![部署到 Render](https://render.com/images/deploy-to-render-button.svg)](https://docs.flowiseai.com/deployment/render)
 
-    -   [Render](https://docs.flowiseai.com/deployment/render)
+### [HuggingFace Spaces](https://docs.flowiseai.com/deployment/hugging-face)
 
-        [![部署到 Render](https://render.com/images/deploy-to-render-button.svg)](https://docs.flowiseai.com/deployment/render)
+<a href="https://huggingface.co/spaces/FlowiseAI/Flowise"><img src="https://huggingface.co/datasets/huggingface/badges/raw/main/open-in-hf-spaces-sm.svg" alt="HuggingFace Spaces"></a>
 
-    -   [HuggingFace Spaces](https://docs.flowiseai.com/deployment/hugging-face)
+### [AWS](https://docs.flowiseai.com/deployment/aws)
 
-        <a href="https://huggingface.co/spaces/FlowiseAI/Flowise"><img src="https://huggingface.co/datasets/huggingface/badges/raw/main/open-in-hf-spaces-sm.svg" alt="HuggingFace Spaces"></a>
+### [Azure](https://docs.flowiseai.com/deployment/azure)
 
-    -   [Elestio](https://elest.io/open-source/flowiseai)
+### [DigitalOcean](https://docs.flowiseai.com/deployment/digital-ocean)
 
-        [![Deploy](https://pub-da36157c854648669813f3f76c526c2b.r2.dev/deploy-on-elestio-black.png)](https://elest.io/open-source/flowiseai)
-
-    -   [Sealos](https://cloud.sealos.io/?openapp=system-template%3FtemplateName%3Dflowise)
-
-        [![部署到 Sealos](https://raw.githubusercontent.com/labring-actions/templates/main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-template%3FtemplateName%3Dflowise)
-
-    -   [RepoCloud](https://repocloud.io/details/?app_id=29)
-
-        [![部署到 RepoCloud](https://d16t0pc4846x52.cloudfront.net/deploy.png)](https://repocloud.io/details/?app_id=29)
-
-      </details>
+### [GCP](https://docs.flowiseai.com/deployment/gcp)
 
 ## 💻 云托管
 

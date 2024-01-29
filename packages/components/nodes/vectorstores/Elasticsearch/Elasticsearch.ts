@@ -183,26 +183,13 @@ const prepareConnectionOptions = (
     } else if (cloudId) {
         let username = getCredentialParam('username', credentialData, nodeData)
         let password = getCredentialParam('password', credentialData, nodeData)
-        if (cloudId.startsWith('http')) {
-            elasticSearchClientOptions = {
-                node: cloudId,
-                auth: {
-                    username: username,
-                    password: password
-                },
-                tls: {
-                    rejectUnauthorized: false
-                }
-            }
-        } else {
-            elasticSearchClientOptions = {
-                cloud: {
-                    id: cloudId
-                },
-                auth: {
-                    username: username,
-                    password: password
-                }
+        elasticSearchClientOptions = {
+            cloud: {
+                id: cloudId
+            },
+            auth: {
+                username: username,
+                password: password
             }
         }
     }

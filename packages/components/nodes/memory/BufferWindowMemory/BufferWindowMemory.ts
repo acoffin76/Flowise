@@ -1,7 +1,6 @@
-import { FlowiseWindowMemory, IMessage, INode, INodeData, INodeParams, MemoryMethods } from '../../../src/Interface'
-import { convertBaseMessagetoIMessage, getBaseClasses } from '../../../src/utils'
+import { INode, INodeData, INodeParams } from '../../../src/Interface'
+import { getBaseClasses } from '../../../src/utils'
 import { BufferWindowMemory, BufferWindowMemoryInput } from 'langchain/memory'
-import { BaseMessage } from 'langchain/schema'
 
 class BufferWindowMemory_Memory implements INode {
     label: string
@@ -58,36 +57,7 @@ class BufferWindowMemory_Memory implements INode {
             k: parseInt(k, 10)
         }
 
-        return new BufferWindowMemoryExtended(obj)
-    }
-}
-
-class BufferWindowMemoryExtended extends FlowiseWindowMemory implements MemoryMethods {
-    constructor(fields: BufferWindowMemoryInput) {
-        super(fields)
-    }
-
-    async getChatMessages(_?: string, returnBaseMessages = false, prevHistory: IMessage[] = []): Promise<IMessage[] | BaseMessage[]> {
-        await this.chatHistory.clear()
-
-        // Insert into chatHistory
-        for (const msg of prevHistory) {
-            if (msg.type === 'userMessage') await this.chatHistory.addUserMessage(msg.message)
-            else if (msg.type === 'apiMessage') await this.chatHistory.addAIChatMessage(msg.message)
-        }
-
-        const memoryResult = await this.loadMemoryVariables({})
-        const baseMessages = memoryResult[this.memoryKey ?? 'chat_history']
-        return returnBaseMessages ? baseMessages : convertBaseMessagetoIMessage(baseMessages)
-    }
-
-    async addChatMessages(): Promise<void> {
-        // adding chat messages will be done on the fly in getChatMessages()
-        return
-    }
-
-    async clearChatMessages(): Promise<void> {
-        await this.clear()
+        return new BufferWindowMemory(obj)
     }
 }
 

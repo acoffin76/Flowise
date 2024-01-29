@@ -6,15 +6,15 @@
             "height": 376,
             "id": "bufferMemory_0",
             "position": {
-                "x": 240.5161028076149,
-                "y": 165.35849026339048
+                "x": 451.4449437285705,
+                "y": 118.30026803362762
             },
             "type": "customNode",
             "data": {
                 "id": "bufferMemory_0",
                 "label": "Buffer Memory",
-                "version": 1,
                 "name": "bufferMemory",
+                "version": 1,
                 "type": "BufferMemory",
                 "baseClasses": ["BufferMemory", "BaseChatMemory", "BaseMemory"],
                 "category": "Memory",
@@ -53,8 +53,8 @@
             },
             "selected": false,
             "positionAbsolute": {
-                "x": 240.5161028076149,
-                "y": 165.35849026339048
+                "x": 451.4449437285705,
+                "y": 118.30026803362762
             },
             "dragging": false
         },
@@ -63,17 +63,17 @@
             "height": 383,
             "id": "conversationChain_0",
             "position": {
-                "x": 958.9887390513221,
-                "y": 318.8734467468765
+                "x": 1176.1569322079652,
+                "y": 303.56879146735974
             },
             "type": "customNode",
             "data": {
                 "id": "conversationChain_0",
                 "label": "Conversation Chain",
-                "version": 2,
                 "name": "conversationChain",
+                "version": 1,
                 "type": "ConversationChain",
-                "baseClasses": ["ConversationChain", "LLMChain", "BaseChain", "Runnable"],
+                "baseClasses": ["ConversationChain", "LLMChain", "BaseChain"],
                 "category": "Chains",
                 "description": "Chat models specific conversational chain with memory",
                 "inputParams": [
@@ -82,17 +82,15 @@
                         "name": "systemMessagePrompt",
                         "type": "string",
                         "rows": 4,
-                        "description": "If Chat Prompt Template is provided, this will be ignored",
                         "additionalParams": true,
                         "optional": true,
-                        "default": "The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.",
-                        "placeholder": "The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.",
+                        "placeholder": "You are a helpful assistant that write codes",
                         "id": "conversationChain_0-input-systemMessagePrompt-string"
                     }
                 ],
                 "inputAnchors": [
                     {
-                        "label": "Chat Model",
+                        "label": "Language Model",
                         "name": "model",
                         "type": "BaseChatModel",
                         "id": "conversationChain_0-input-model-BaseChatModel"
@@ -104,26 +102,27 @@
                         "id": "conversationChain_0-input-memory-BaseMemory"
                     },
                     {
-                        "label": "Chat Prompt Template",
-                        "name": "chatPromptTemplate",
-                        "type": "ChatPromptTemplate",
-                        "description": "Override existing prompt with Chat Prompt Template. Human Message must includes {input} variable",
+                        "label": "Document",
+                        "name": "document",
+                        "type": "Document",
+                        "description": "Include whole document into the context window",
                         "optional": true,
-                        "id": "conversationChain_0-input-chatPromptTemplate-ChatPromptTemplate"
+                        "list": true,
+                        "id": "conversationChain_0-input-document-Document"
                     }
                 ],
                 "inputs": {
                     "model": "{{chatAnthropic_0.data.instance}}",
                     "memory": "{{bufferMemory_0.data.instance}}",
-                    "chatPromptTemplate": "{{chatPromptTemplate_0.data.instance}}",
-                    "systemMessagePrompt": "The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know."
+                    "document": ["{{pdfFile_0.data.instance}}"],
+                    "systemMessagePrompt": ""
                 },
                 "outputAnchors": [
                     {
-                        "id": "conversationChain_0-output-conversationChain-ConversationChain|LLMChain|BaseChain|Runnable",
+                        "id": "conversationChain_0-output-conversationChain-ConversationChain|LLMChain|BaseChain",
                         "name": "conversationChain",
                         "label": "ConversationChain",
-                        "type": "ConversationChain | LLMChain | BaseChain | Runnable"
+                        "type": "ConversationChain | LLMChain | BaseChain"
                     }
                 ],
                 "outputs": {},
@@ -131,27 +130,27 @@
             },
             "selected": false,
             "positionAbsolute": {
-                "x": 958.9887390513221,
-                "y": 318.8734467468765
+                "x": 1176.1569322079652,
+                "y": 303.56879146735974
             },
             "dragging": false
         },
         {
             "width": 300,
-            "height": 574,
+            "height": 523,
             "id": "chatAnthropic_0",
             "position": {
-                "x": 585.3308245972187,
-                "y": -116.32789506560908
+                "x": 800.5525382783799,
+                "y": -130.7988221837009
             },
             "type": "customNode",
             "data": {
                 "id": "chatAnthropic_0",
                 "label": "ChatAnthropic",
-                "version": 3,
                 "name": "chatAnthropic",
+                "version": 3,
                 "type": "ChatAnthropic",
-                "baseClasses": ["ChatAnthropic", "BaseChatModel", "BaseLanguageModel", "Runnable"],
+                "baseClasses": ["ChatAnthropic", "BaseChatModel", "BaseLanguageModel"],
                 "category": "Chat Models",
                 "description": "Wrapper around ChatAnthropic large language models that use the Chat endpoint",
                 "inputParams": [
@@ -227,7 +226,7 @@
                                 "name": "claude-instant-v1.1-100k"
                             }
                         ],
-                        "default": "claude-2",
+                        "default": "claude-v1",
                         "optional": true,
                         "id": "chatAnthropic_0-input-modelName-options"
                     },
@@ -235,7 +234,6 @@
                         "label": "Temperature",
                         "name": "temperature",
                         "type": "number",
-                        "step": 0.1,
                         "default": 0.9,
                         "optional": true,
                         "id": "chatAnthropic_0-input-temperature-number"
@@ -244,7 +242,6 @@
                         "label": "Max Tokens",
                         "name": "maxTokensToSample",
                         "type": "number",
-                        "step": 1,
                         "optional": true,
                         "additionalParams": true,
                         "id": "chatAnthropic_0-input-maxTokensToSample-number"
@@ -253,7 +250,6 @@
                         "label": "Top P",
                         "name": "topP",
                         "type": "number",
-                        "step": 0.1,
                         "optional": true,
                         "additionalParams": true,
                         "id": "chatAnthropic_0-input-topP-number"
@@ -262,7 +258,6 @@
                         "label": "Top K",
                         "name": "topK",
                         "type": "number",
-                        "step": 0.1,
                         "optional": true,
                         "additionalParams": true,
                         "id": "chatAnthropic_0-input-topK-number"
@@ -278,7 +273,6 @@
                     }
                 ],
                 "inputs": {
-                    "cache": "",
                     "modelName": "claude-2.1",
                     "temperature": 0.9,
                     "maxTokensToSample": "",
@@ -287,10 +281,10 @@
                 },
                 "outputAnchors": [
                     {
-                        "id": "chatAnthropic_0-output-chatAnthropic-ChatAnthropic|BaseChatModel|BaseLanguageModel|Runnable",
+                        "id": "chatAnthropic_0-output-chatAnthropic-ChatAnthropic|BaseChatModel|BaseLanguageModel",
                         "name": "chatAnthropic",
                         "label": "ChatAnthropic",
-                        "type": "ChatAnthropic | BaseChatModel | BaseLanguageModel | Runnable"
+                        "type": "ChatAnthropic | BaseChatModel | BaseLanguageModel"
                     }
                 ],
                 "outputs": {},
@@ -298,106 +292,61 @@
             },
             "selected": false,
             "positionAbsolute": {
-                "x": 585.3308245972187,
-                "y": -116.32789506560908
+                "x": 800.5525382783799,
+                "y": -130.7988221837009
             },
             "dragging": false
         },
         {
             "width": 300,
-            "height": 688,
-            "id": "chatPromptTemplate_0",
+            "height": 507,
+            "id": "pdfFile_0",
             "position": {
-                "x": -106.44189698270114,
-                "y": 20.133956087516538
+                "x": 94.16886576108482,
+                "y": 37.12056504707391
             },
             "type": "customNode",
             "data": {
-                "id": "chatPromptTemplate_0",
-                "label": "Chat Prompt Template",
+                "id": "pdfFile_0",
+                "label": "Pdf File",
+                "name": "pdfFile",
                 "version": 1,
-                "name": "chatPromptTemplate",
-                "type": "ChatPromptTemplate",
-                "baseClasses": ["ChatPromptTemplate", "BaseChatPromptTemplate", "BasePromptTemplate", "Runnable"],
-                "category": "Prompts",
-                "description": "Schema to represent a chat prompt",
-                "inputParams": [
-                    {
-                        "label": "System Message",
-                        "name": "systemMessagePrompt",
-                        "type": "string",
-                        "rows": 4,
-                        "placeholder": "You are a helpful assistant that translates {input_language} to {output_language}.",
-                        "id": "chatPromptTemplate_0-input-systemMessagePrompt-string"
-                    },
-                    {
-                        "label": "Human Message",
-                        "name": "humanMessagePrompt",
-                        "type": "string",
-                        "rows": 4,
-                        "placeholder": "{text}",
-                        "id": "chatPromptTemplate_0-input-humanMessagePrompt-string"
-                    },
-                    {
-                        "label": "Format Prompt Values",
-                        "name": "promptValues",
-                        "type": "json",
-                        "optional": true,
-                        "acceptVariable": true,
-                        "list": true,
-                        "id": "chatPromptTemplate_0-input-promptValues-json"
-                    }
-                ],
-                "inputAnchors": [],
-                "inputs": {
-                    "systemMessagePrompt": "The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.\nThe AI has the following context:\n{context}",
-                    "humanMessagePrompt": "{input}",
-                    "promptValues": "{\"context\":\"{{plainText_0.data.instance}}\",\"input\":\"{{question}}\"}"
-                },
-                "outputAnchors": [
-                    {
-                        "id": "chatPromptTemplate_0-output-chatPromptTemplate-ChatPromptTemplate|BaseChatPromptTemplate|BasePromptTemplate|Runnable",
-                        "name": "chatPromptTemplate",
-                        "label": "ChatPromptTemplate",
-                        "type": "ChatPromptTemplate | BaseChatPromptTemplate | BasePromptTemplate | Runnable"
-                    }
-                ],
-                "outputs": {},
-                "selected": false
-            },
-            "selected": false,
-            "positionAbsolute": {
-                "x": -106.44189698270114,
-                "y": 20.133956087516538
-            },
-            "dragging": false
-        },
-        {
-            "width": 300,
-            "height": 485,
-            "id": "plainText_0",
-            "position": {
-                "x": -487.7511991135089,
-                "y": 77.83838996645807
-            },
-            "type": "customNode",
-            "data": {
-                "id": "plainText_0",
-                "label": "Plain Text",
-                "version": 2,
-                "name": "plainText",
                 "type": "Document",
                 "baseClasses": ["Document"],
                 "category": "Document Loaders",
-                "description": "Load data from plain text",
+                "description": "Load data from PDF files",
                 "inputParams": [
                     {
-                        "label": "Text",
-                        "name": "text",
-                        "type": "string",
-                        "rows": 4,
-                        "placeholder": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua...",
-                        "id": "plainText_0-input-text-string"
+                        "label": "Pdf File",
+                        "name": "pdfFile",
+                        "type": "file",
+                        "fileType": ".pdf",
+                        "id": "pdfFile_0-input-pdfFile-file"
+                    },
+                    {
+                        "label": "Usage",
+                        "name": "usage",
+                        "type": "options",
+                        "options": [
+                            {
+                                "label": "One document per page",
+                                "name": "perPage"
+                            },
+                            {
+                                "label": "One document per file",
+                                "name": "perFile"
+                            }
+                        ],
+                        "default": "perPage",
+                        "id": "pdfFile_0-input-usage-options"
+                    },
+                    {
+                        "label": "Use Legacy Build",
+                        "name": "legacyBuild",
+                        "type": "boolean",
+                        "optional": true,
+                        "additionalParams": true,
+                        "id": "pdfFile_0-input-legacyBuild-boolean"
                     },
                     {
                         "label": "Metadata",
@@ -405,7 +354,7 @@
                         "type": "json",
                         "optional": true,
                         "additionalParams": true,
-                        "id": "plainText_0-input-metadata-json"
+                        "id": "pdfFile_0-input-metadata-json"
                     }
                 ],
                 "inputAnchors": [
@@ -414,45 +363,30 @@
                         "name": "textSplitter",
                         "type": "TextSplitter",
                         "optional": true,
-                        "id": "plainText_0-input-textSplitter-TextSplitter"
+                        "id": "pdfFile_0-input-textSplitter-TextSplitter"
                     }
                 ],
                 "inputs": {
-                    "text": "Welcome to Skyworld Hotel, where your dreams take flight and your stay soars to new heights. Nestled amidst breathtaking cityscape views, our upscale establishment offers an unparalleled blend of luxury and comfort. Our rooms are elegantly appointed, featuring modern amenities and plush furnishings to ensure your relaxation.\n\nIndulge in culinary delights at our rooftop restaurant, offering a gastronomic journey with panoramic vistas. Skyworld Hotel boasts state-of-the-art conference facilities, perfect for business travelers, and an inviting spa for relaxation seekers. Our attentive staff is dedicated to ensuring your every need is met, making your stay memorable.\n\nCentrally located, we offer easy access to local attractions, making us an ideal choice for both leisure and business travelers. Experience the world of hospitality like never before at Skyworld Hotel.",
                     "textSplitter": "",
+                    "usage": "perPage",
+                    "legacyBuild": "",
                     "metadata": ""
                 },
                 "outputAnchors": [
                     {
-                        "name": "output",
-                        "label": "Output",
-                        "type": "options",
-                        "options": [
-                            {
-                                "id": "plainText_0-output-document-Document",
-                                "name": "document",
-                                "label": "Document",
-                                "type": "Document"
-                            },
-                            {
-                                "id": "plainText_0-output-text-string|json",
-                                "name": "text",
-                                "label": "Text",
-                                "type": "string | json"
-                            }
-                        ],
-                        "default": "document"
+                        "id": "pdfFile_0-output-pdfFile-Document",
+                        "name": "pdfFile",
+                        "label": "Document",
+                        "type": "Document"
                     }
                 ],
-                "outputs": {
-                    "output": "text"
-                },
+                "outputs": {},
                 "selected": false
             },
             "selected": false,
             "positionAbsolute": {
-                "x": -487.7511991135089,
-                "y": 77.83838996645807
+                "x": 94.16886576108482,
+                "y": 37.12056504707391
             },
             "dragging": false
         }
@@ -464,31 +398,32 @@
             "target": "conversationChain_0",
             "targetHandle": "conversationChain_0-input-memory-BaseMemory",
             "type": "buttonedge",
-            "id": "bufferMemory_0-bufferMemory_0-output-bufferMemory-BufferMemory|BaseChatMemory|BaseMemory-conversationChain_0-conversationChain_0-input-memory-BaseMemory"
+            "id": "bufferMemory_0-bufferMemory_0-output-bufferMemory-BufferMemory|BaseChatMemory|BaseMemory-conversationChain_0-conversationChain_0-input-memory-BaseMemory",
+            "data": {
+                "label": ""
+            }
         },
         {
             "source": "chatAnthropic_0",
-            "sourceHandle": "chatAnthropic_0-output-chatAnthropic-ChatAnthropic|BaseChatModel|BaseLanguageModel|Runnable",
+            "sourceHandle": "chatAnthropic_0-output-chatAnthropic-ChatAnthropic|BaseChatModel|BaseLanguageModel",
             "target": "conversationChain_0",
             "targetHandle": "conversationChain_0-input-model-BaseChatModel",
             "type": "buttonedge",
-            "id": "chatAnthropic_0-chatAnthropic_0-output-chatAnthropic-ChatAnthropic|BaseChatModel|BaseLanguageModel|Runnable-conversationChain_0-conversationChain_0-input-model-BaseChatModel"
+            "id": "chatAnthropic_0-chatAnthropic_0-output-chatAnthropic-ChatAnthropic|BaseChatModel|BaseLanguageModel-conversationChain_0-conversationChain_0-input-model-BaseChatModel",
+            "data": {
+                "label": ""
+            }
         },
         {
-            "source": "plainText_0",
-            "sourceHandle": "plainText_0-output-text-string|json",
-            "target": "chatPromptTemplate_0",
-            "targetHandle": "chatPromptTemplate_0-input-promptValues-json",
-            "type": "buttonedge",
-            "id": "plainText_0-plainText_0-output-text-string|json-chatPromptTemplate_0-chatPromptTemplate_0-input-promptValues-json"
-        },
-        {
-            "source": "chatPromptTemplate_0",
-            "sourceHandle": "chatPromptTemplate_0-output-chatPromptTemplate-ChatPromptTemplate|BaseChatPromptTemplate|BasePromptTemplate|Runnable",
+            "source": "pdfFile_0",
+            "sourceHandle": "pdfFile_0-output-pdfFile-Document",
             "target": "conversationChain_0",
-            "targetHandle": "conversationChain_0-input-chatPromptTemplate-ChatPromptTemplate",
+            "targetHandle": "conversationChain_0-input-document-Document",
             "type": "buttonedge",
-            "id": "chatPromptTemplate_0-chatPromptTemplate_0-output-chatPromptTemplate-ChatPromptTemplate|BaseChatPromptTemplate|BasePromptTemplate|Runnable-conversationChain_0-conversationChain_0-input-chatPromptTemplate-ChatPromptTemplate"
+            "id": "pdfFile_0-pdfFile_0-output-pdfFile-Document-conversationChain_0-conversationChain_0-input-document-Document",
+            "data": {
+                "label": ""
+            }
         }
     ]
 }

@@ -16,7 +16,6 @@ import SaveChatflowDialog from 'ui-component/dialog/SaveChatflowDialog'
 import APICodeDialog from 'views/chatflows/APICodeDialog'
 import AnalyseFlowDialog from 'ui-component/dialog/AnalyseFlowDialog'
 import ViewMessagesDialog from 'ui-component/dialog/ViewMessagesDialog'
-import StarterPromptsDialog from 'ui-component/dialog/StarterPromptsDialog'
 
 // API
 import chatflowsApi from 'api/chatflows'
@@ -46,8 +45,6 @@ const CanvasHeader = ({ chatflow, handleSaveFlow, handleDeleteFlow, handleLoadFl
     const [apiDialogProps, setAPIDialogProps] = useState({})
     const [analyseDialogOpen, setAnalyseDialogOpen] = useState(false)
     const [analyseDialogProps, setAnalyseDialogProps] = useState({})
-    const [conversationStartersDialogOpen, setConversationStartersDialogOpen] = useState(false)
-    const [conversationStartersDialogProps, setConversationStartersDialogProps] = useState({})
     const [viewMessagesDialogOpen, setViewMessagesDialogOpen] = useState(false)
     const [viewMessagesDialogProps, setViewMessagesDialogProps] = useState({})
 
@@ -59,12 +56,6 @@ const CanvasHeader = ({ chatflow, handleSaveFlow, handleDeleteFlow, handleLoadFl
 
         if (setting === 'deleteChatflow') {
             handleDeleteFlow()
-        } else if (setting === 'conversationStarters') {
-            setConversationStartersDialogProps({
-                title: 'Starter Prompts - ' + chatflow.name,
-                chatflow: chatflow
-            })
-            setConversationStartersDialogOpen(true)
         } else if (setting === 'analyseChatflow') {
             setAnalyseDialogProps({
                 title: 'Analyse Chatflow',
@@ -385,12 +376,6 @@ const CanvasHeader = ({ chatflow, handleSaveFlow, handleDeleteFlow, handleLoadFl
             />
             <APICodeDialog show={apiDialogOpen} dialogProps={apiDialogProps} onCancel={() => setAPIDialogOpen(false)} />
             <AnalyseFlowDialog show={analyseDialogOpen} dialogProps={analyseDialogProps} onCancel={() => setAnalyseDialogOpen(false)} />
-            <StarterPromptsDialog
-                show={conversationStartersDialogOpen}
-                dialogProps={conversationStartersDialogProps}
-                onConfirm={() => setConversationStartersDialogOpen(false)}
-                onCancel={() => setConversationStartersDialogOpen(false)}
-            />
             <ViewMessagesDialog
                 show={viewMessagesDialogOpen}
                 dialogProps={viewMessagesDialogProps}

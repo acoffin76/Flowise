@@ -149,12 +149,9 @@ class Qdrant_VectorStores implements INode {
             const credentialData = await getCredentialData(nodeData.credential ?? '', options)
             const qdrantApiKey = getCredentialParam('qdrantApiKey', credentialData, nodeData)
 
-            const port = Qdrant_VectorStores.determinePortByUrl(qdrantServerUrl)
-
             const client = new QdrantClient({
                 url: qdrantServerUrl,
-                apiKey: qdrantApiKey,
-                port: port
+                apiKey: qdrantApiKey
             })
 
             const flattenDocs = docs && docs.length ? flatten(docs) : []
@@ -194,19 +191,16 @@ class Qdrant_VectorStores implements INode {
         const qdrantVectorDimension = nodeData.inputs?.qdrantVectorDimension
         const output = nodeData.outputs?.output as string
         const topK = nodeData.inputs?.topK as string
-        let queryFilter = nodeData.inputs?.qdrantFilter
+        let queryFilter = nodeData.inputs?.queryFilter
 
         const k = topK ? parseFloat(topK) : 4
 
         const credentialData = await getCredentialData(nodeData.credential ?? '', options)
         const qdrantApiKey = getCredentialParam('qdrantApiKey', credentialData, nodeData)
 
-        const port = Qdrant_VectorStores.determinePortByUrl(qdrantServerUrl)
-
         const client = new QdrantClient({
             url: qdrantServerUrl,
-            apiKey: qdrantApiKey,
-            port: port
+            apiKey: qdrantApiKey
         })
 
         const dbConfig: QdrantLibArgs = {
@@ -247,28 +241,6 @@ class Qdrant_VectorStores implements INode {
             return vectorStore
         }
         return vectorStore
-    }
-
-    /**
-     * Determine the port number from the given URL.
-     *
-     * The problem is when not doing this the qdrant-client.js will fall back on 6663 when you enter a port 443 and 80.
-     * See: https://stackoverflow.com/questions/59104197/nodejs-new-url-urlhttps-myurl-com80-lists-the-port-as-empty
-     * @param qdrantServerUrl the url to get the port from
-     */
-    static determinePortByUrl(qdrantServerUrl: string): number {
-        const parsedUrl = new URL(qdrantServerUrl)
-
-        let port = parsedUrl.port ? parseInt(parsedUrl.port) : 6663
-
-        if (parsedUrl.protocol === 'https:' && parsedUrl.port === '') {
-            port = 443
-        }
-        if (parsedUrl.protocol === 'http:' && parsedUrl.port === '') {
-            port = 80
-        }
-
-        return port
     }
 }
 

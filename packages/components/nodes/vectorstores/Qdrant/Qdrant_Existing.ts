@@ -135,7 +135,7 @@ class Qdrant_Existing_VectorStores implements INode {
         const qdrantVectorDimension = nodeData.inputs?.qdrantVectorDimension
         const output = nodeData.outputs?.output as string
         const topK = nodeData.inputs?.topK as string
-        let queryFilter = nodeData.inputs?.qdrantFilter
+        let queryFilter = nodeData.inputs?.queryFilter
 
         const k = topK ? parseFloat(topK) : 4
 

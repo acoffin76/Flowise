@@ -19,7 +19,7 @@ class SerpAPI_Tools implements INode {
         this.name = 'serpAPI'
         this.version = 1.0
         this.type = 'SerpAPI'
-        this.icon = 'serp.svg'
+        this.icon = 'serp.png'
         this.category = 'Tools'
         this.description = 'Wrapper around SerpAPI - a real-time API to access Google search results'
         this.inputs = []
