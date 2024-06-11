@@ -33,6 +33,7 @@ services:
             - '${PORT}:${PORT}'
         volumes:
             - ~/.flowise:/root/.flowise
+<<<<<<< HEAD
             - ~/input_code:/input_code
             - ~/output_code:/output_code
             - ~/input_docs:/input_docs
@@ -46,3 +47,6 @@ networks:
     flowise_net:
         name: chroma_net
         external: true
+=======
+        entrypoint: /bin/sh -c "sleep 3; flowise start"
+>>>>>>> f1e78d870e28cb1f4038a0eed537b1be7523ac2c
