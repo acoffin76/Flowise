@@ -52,7 +52,6 @@ import exportImportApi from '@/api/exportimport'
 
 // Hooks
 import useApi from '@/hooks/useApi'
-import { useConfig } from '@/store/context/ConfigContext'
 import { getErrorMessage } from '@/utils/errorHandler'
 
 const dataToExport = [
@@ -101,7 +100,14 @@ const ExportDialog = ({ show, onCancel, onExport }) => {
             </DialogTitle>
             <DialogContent>
                 {!isExporting && (
-                    <Stack direction='row' sx={{ gap: 1, flexWrap: 'wrap' }}>
+                    <Stack
+                        direction='row'
+                        sx={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, 1fr)',
+                            gap: 1
+                        }}
+                    >
                         {dataToExport.map((data, index) => (
                             <FormControlLabel
                                 key={index}
@@ -208,7 +214,6 @@ const ProfileSection = ({ handleLogout }) => {
     const theme = useTheme()
 
     const customization = useSelector((state) => state.customization)
-    const { isCloud } = useConfig()
 
     const [open, setOpen] = useState(false)
     const [aboutDialogOpen, setAboutDialogOpen] = useState(false)
@@ -493,18 +498,18 @@ const ProfileSection = ({ handleLogout }) => {
                                                     </ListItemIcon>
                                                     <ListItemText primary={<Typography variant='body2'>Version</Typography>} />
                                                 </ListItemButton>
-                                                {isAuthenticated && !currentUser.isSSO && !isCloud && (
+                                                {isAuthenticated && !currentUser.isSSO && (
                                                     <ListItemButton
                                                         sx={{ borderRadius: `${customization.borderRadius}px` }}
                                                         onClick={() => {
                                                             setOpen(false)
-                                                            navigate('/user-profile')
+                                                            navigate('/account')
                                                         }}
                                                     >
                                                         <ListItemIcon>
                                                             <IconUserEdit stroke={1.5} size='1.3rem' />
                                                         </ListItemIcon>
-                                                        <ListItemText primary={<Typography variant='body2'>Update Profile</Typography>} />
+                                                        <ListItemText primary={<Typography variant='body2'>Account Settings</Typography>} />
                                                     </ListItemButton>
                                                 )}
                                                 <ListItemButton

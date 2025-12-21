@@ -22,12 +22,16 @@ import zodToJsonSchema from 'zod-to-json-schema'
 import { getErrorMessage } from '../../../src/error'
 import { DataSource } from 'typeorm'
 import {
+    addImageArtifactsToMessages,
+    extractArtifactsFromResponse,
     getPastChatHistoryImageMessages,
     getUniqueImageMessages,
     processMessagesWithImages,
     replaceBase64ImagesWithFileReferences,
+    replaceInlineDataWithFileReferences,
     updateFlowState
 } from '../utils'
+import { convertMultiOptionsToStringArray, processTemplateVariables, configureStructuredOutput } from '../../../src/utils'
 
 interface ITool {
     agentSelectedTool: string
@@ -78,7 +82,7 @@ class Agent_Agentflow implements INode {
     constructor() {
         this.label = 'Agent'
         this.name = 'agentAgentflow'
-        this.version = 1.0
+        this.version = 3.2
         this.type = 'Agent'
         this.category = 'Agent Flows'
         this.description = 'Dynamically choose and utilize tools during runtime, enabling multi-step reasoning'
@@ -131,6 +135,87 @@ class Agent_Agentflow implements INode {
                         rows: 4
                     }
                 ]
+            },
+            {
+                label: 'OpenAI Built-in Tools',
+                name: 'agentToolsBuiltInOpenAI',
+                type: 'multiOptions',
+                optional: true,
+                options: [
+                    {
+                        label: 'Web Search',
+                        name: 'web_search_preview',
+                        description: 'Search the web for the latest information'
+                    },
+                    {
+                        label: 'Code Interpreter',
+                        name: 'code_interpreter',
+                        description: 'Write and run Python code in a sandboxed environment'
+                    },
+                    {
+                        label: 'Image Generation',
+                        name: 'image_generation',
+                        description: 'Generate images based on a text prompt'
+                    }
+                ],
+                show: {
+                    agentModel: 'chatOpenAI'
+                }
+            },
+            {
+                label: 'Gemini Built-in Tools',
+                name: 'agentToolsBuiltInGemini',
+                type: 'multiOptions',
+                optional: true,
+                options: [
+                    {
+                        label: 'URL Context',
+                        name: 'urlContext',
+                        description: 'Extract content from given URLs'
+                    },
+                    {
+                        label: 'Google Search',
+                        name: 'googleSearch',
+                        description: 'Search real-time web content'
+                    },
+                    {
+                        label: 'Code Execution',
+                        name: 'codeExecution',
+                        description: 'Write and run Python code in a sandboxed environment'
+                    }
+                ],
+                show: {
+                    agentModel: 'chatGoogleGenerativeAI'
+                }
+            },
+            {
+                label: 'Anthropic Built-in Tools',
+                name: 'agentToolsBuiltInAnthropic',
+                type: 'multiOptions',
+                optional: true,
+                options: [
+                    {
+                        label: 'Web Search',
+                        name: 'web_search_20250305',
+                        description: 'Search the web for the latest information'
+                    },
+                    {
+                        label: 'Web Fetch',
+                        name: 'web_fetch_20250910',
+                        description: 'Retrieve full content from specified web pages'
+                    }
+                    /*
+                    * Not supported yet as we need to get bash_code_execution_tool_result from content:
+                    https://docs.claude.com/en/docs/agents-and-tools/tool-use/code-execution-tool#retrieve-generated-files
+                    {
+                        label: 'Code Interpreter',
+                        name: 'code_execution_20250825',
+                        description: 'Write and run Python code in a sandboxed environment'
+                    }*/
+                ],
+                show: {
+                    agentModel: 'chatAnthropic'
+                }
             },
             {
                 label: 'Tools',
@@ -316,6 +401,108 @@ class Agent_Agentflow implements INode {
                 default: 'userMessage'
             },
             {
+                label: 'JSON Structured Output',
+                name: 'agentStructuredOutput',
+                description: 'Instruct the Agent to give output in a JSON structured schema',
+                type: 'array',
+                optional: true,
+                acceptVariable: true,
+                array: [
+                    {
+                        label: 'Key',
+                        name: 'key',
+                        type: 'string'
+                    },
+                    {
+                        label: 'Type',
+                        name: 'type',
+                        type: 'options',
+                        options: [
+                            {
+                                label: 'String',
+                                name: 'string'
+                            },
+                            {
+                                label: 'String Array',
+                                name: 'stringArray'
+                            },
+                            {
+                                label: 'Number',
+                                name: 'number'
+                            },
+                            {
+                                label: 'Boolean',
+                                name: 'boolean'
+                            },
+                            {
+                                label: 'Enum',
+                                name: 'enum'
+                            },
+                            {
+                                label: 'JSON Array',
+                                name: 'jsonArray'
+                            }
+                        ]
+                    },
+                    {
+                        label: 'Enum Values',
+                        name: 'enumValues',
+                        type: 'string',
+                        placeholder: 'value1, value2, value3',
+                        description: 'Enum values. Separated by comma',
+                        optional: true,
+                        show: {
+                            'agentStructuredOutput[$index].type': 'enum'
+                        }
+                    },
+                    {
+                        label: 'JSON Schema',
+                        name: 'jsonSchema',
+                        type: 'code',
+                        placeholder: `{
+    "answer": {
+        "type": "string",
+        "description": "Value of the answer"
+    },
+    "reason": {
+        "type": "string",
+        "description": "Reason for the answer"
+    },
+    "optional": {
+        "type": "boolean"
+    },
+    "count": {
+        "type": "number"
+    },
+    "children": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string",
+                    "description": "Value of the children's answer"
+                }
+            }
+        }
+    }
+}`,
+                        description: 'JSON schema for the structured output',
+                        optional: true,
+                        hideCodeExecute: true,
+                        show: {
+                            'agentStructuredOutput[$index].type': 'jsonArray'
+                        }
+                    },
+                    {
+                        label: 'Description',
+                        name: 'description',
+                        type: 'string',
+                        placeholder: 'Description of the key'
+                    }
+                ]
+            },
+            {
                 label: 'Update Flow State',
                 name: 'agentUpdateState',
                 description: 'Update runtime state during the execution of the workflow',
@@ -327,8 +514,7 @@ class Agent_Agentflow implements INode {
                         label: 'Key',
                         name: 'key',
                         type: 'asyncOptions',
-                        loadMethod: 'listRuntimeStateKeys',
-                        freeSolo: true
+                        loadMethod: 'listRuntimeStateKeys'
                     },
                     {
                         label: 'Value',
@@ -524,7 +710,7 @@ class Agent_Agentflow implements INode {
                 }
                 const componentNode = options.componentNodes[agentSelectedTool]
 
-                const jsonSchema = zodToJsonSchema(tool.schema)
+                const jsonSchema = zodToJsonSchema(tool.schema as any)
                 if (jsonSchema.$schema) {
                     delete jsonSchema.$schema
                 }
@@ -691,6 +877,7 @@ class Agent_Agentflow implements INode {
             const memoryType = nodeData.inputs?.agentMemoryType as string
             const userMessage = nodeData.inputs?.agentUserMessage as string
             const _agentUpdateState = nodeData.inputs?.agentUpdateState
+            const _agentStructuredOutput = nodeData.inputs?.agentStructuredOutput
             const agentMessages = (nodeData.inputs?.agentMessages as unknown as ILLMMessage[]) ?? []
 
             // Extract runtime state and history
@@ -715,6 +902,82 @@ class Agent_Agentflow implements INode {
 
             const llmWithoutToolsBind = (await newLLMNodeInstance.init(newNodeData, '', options)) as BaseChatModel
             let llmNodeInstance = llmWithoutToolsBind
+
+            const isStructuredOutput = _agentStructuredOutput && Array.isArray(_agentStructuredOutput) && _agentStructuredOutput.length > 0
+
+            const agentToolsBuiltInOpenAI = convertMultiOptionsToStringArray(nodeData.inputs?.agentToolsBuiltInOpenAI)
+            if (agentToolsBuiltInOpenAI && agentToolsBuiltInOpenAI.length > 0) {
+                for (const tool of agentToolsBuiltInOpenAI) {
+                    const builtInTool: ICommonObject = {
+                        type: tool
+                    }
+                    if (tool === 'code_interpreter') {
+                        builtInTool.container = { type: 'auto' }
+                    }
+                    ;(toolsInstance as any).push(builtInTool)
+                    ;(availableTools as any).push({
+                        name: tool,
+                        toolNode: {
+                            label: tool,
+                            name: tool
+                        }
+                    })
+                }
+            }
+
+            const agentToolsBuiltInGemini = convertMultiOptionsToStringArray(nodeData.inputs?.agentToolsBuiltInGemini)
+            if (agentToolsBuiltInGemini && agentToolsBuiltInGemini.length > 0) {
+                for (const tool of agentToolsBuiltInGemini) {
+                    const builtInTool: ICommonObject = {
+                        [tool]: {}
+                    }
+                    ;(toolsInstance as any).push(builtInTool)
+                    ;(availableTools as any).push({
+                        name: tool,
+                        toolNode: {
+                            label: tool,
+                            name: tool
+                        }
+                    })
+                }
+            }
+
+            const agentToolsBuiltInAnthropic = convertMultiOptionsToStringArray(nodeData.inputs?.agentToolsBuiltInAnthropic)
+            if (agentToolsBuiltInAnthropic && agentToolsBuiltInAnthropic.length > 0) {
+                for (const tool of agentToolsBuiltInAnthropic) {
+                    // split _ to get the tool name by removing the last part (date)
+                    const toolName = tool.split('_').slice(0, -1).join('_')
+
+                    if (tool === 'code_execution_20250825') {
+                        ;(llmNodeInstance as any).clientOptions = {
+                            defaultHeaders: {
+                                'anthropic-beta': ['code-execution-2025-08-25', 'files-api-2025-04-14']
+                            }
+                        }
+                    }
+
+                    if (tool === 'web_fetch_20250910') {
+                        ;(llmNodeInstance as any).clientOptions = {
+                            defaultHeaders: {
+                                'anthropic-beta': ['web-fetch-2025-09-10']
+                            }
+                        }
+                    }
+
+                    const builtInTool: ICommonObject = {
+                        type: tool,
+                        name: toolName
+                    }
+                    ;(toolsInstance as any).push(builtInTool)
+                    ;(availableTools as any).push({
+                        name: tool,
+                        toolNode: {
+                            label: tool,
+                            name: tool
+                        }
+                    })
+                }
+            }
 
             if (llmNodeInstance && toolsInstance.length > 0) {
                 if (llmNodeInstance.bindTools === undefined) {
@@ -748,7 +1011,11 @@ class Agent_Agentflow implements INode {
                 const role = msg.role
                 const content = msg.content
                 if (role && content) {
-                    messages.push({ role, content })
+                    if (role === 'system') {
+                        messages.unshift({ role, content })
+                    } else {
+                        messages.push({ role, content })
+                    }
                 }
             }
 
@@ -796,7 +1063,7 @@ class Agent_Agentflow implements INode {
             // Initialize response and determine if streaming is possible
             let response: AIMessageChunk = new AIMessageChunk('')
             const isLastNode = options.isLastNode as boolean
-            const isStreamable = isLastNode && options.sseStreamer !== undefined && modelConfig?.streaming !== false
+            const isStreamable = isLastNode && options.sseStreamer !== undefined && modelConfig?.streaming !== false && !isStructuredOutput
 
             // Start analytics
             if (analyticHandlers && options.parentTraceIds) {
@@ -804,16 +1071,11 @@ class Agent_Agentflow implements INode {
                 llmIds = await analyticHandlers.onLLMStart(llmLabel, messages, options.parentTraceIds)
             }
 
-            // Track execution time
-            const startTime = Date.now()
-
-            // Get initial response from LLM
-            const sseStreamer: IServerSideEventStreamer | undefined = options.sseStreamer
-
             // Handle tool calls with support for recursion
             let usedTools: IUsedTool[] = []
             let sourceDocuments: Array<any> = []
             let artifacts: any[] = []
+            let fileAnnotations: any[] = []
             let additionalTokens = 0
             let isWaitingForHumanInput = false
 
@@ -821,11 +1083,23 @@ class Agent_Agentflow implements INode {
             const messagesBeforeToolCalls = [...messages]
             let _toolCallMessages: BaseMessageLike[] = []
 
+            /**
+             * Add image artifacts from previous assistant responses as user messages
+             * Images are converted from FILE-STORAGE::<image_path> to base 64 image_url format
+             */
+            await addImageArtifactsToMessages(messages, options)
+
             // Check if this is hummanInput for tool calls
             const _humanInput = nodeData.inputs?.humanInput
             const humanInput: IHumanInput = typeof _humanInput === 'string' ? JSON.parse(_humanInput) : _humanInput
             const humanInputAction = options.humanInputAction
             const iterationContext = options.iterationContext
+
+            // Track execution time
+            const startTime = Date.now()
+
+            // Get initial response from LLM
+            const sseStreamer: IServerSideEventStreamer | undefined = options.sseStreamer
 
             if (humanInput) {
                 if (humanInput.type !== 'proceed' && humanInput.type !== 'reject') {
@@ -844,7 +1118,8 @@ class Agent_Agentflow implements INode {
                     llmWithoutToolsBind,
                     isStreamable,
                     isLastNode,
-                    iterationContext
+                    iterationContext,
+                    isStructuredOutput
                 })
 
                 response = result.response
@@ -873,11 +1148,21 @@ class Agent_Agentflow implements INode {
                 }
             } else {
                 if (isStreamable) {
-                    response = await this.handleStreamingResponse(sseStreamer, llmNodeInstance, messages, chatId, abortController)
+                    response = await this.handleStreamingResponse(
+                        sseStreamer,
+                        llmNodeInstance,
+                        messages,
+                        chatId,
+                        abortController,
+                        isStructuredOutput
+                    )
                 } else {
                     response = await llmNodeInstance.invoke(messages, { signal: abortController?.signal })
                 }
             }
+
+            // Address built in tools (after artifacts are processed)
+            const builtInUsedTools: IUsedTool[] = await this.extractBuiltInUsedTools(response, [])
 
             if (!humanInput && response.tool_calls && response.tool_calls.length > 0) {
                 const result = await this.handleToolCalls({
@@ -892,7 +1177,8 @@ class Agent_Agentflow implements INode {
                     llmNodeInstance,
                     isStreamable,
                     isLastNode,
-                    iterationContext
+                    iterationContext,
+                    isStructuredOutput
                 })
 
                 response = result.response
@@ -919,13 +1205,26 @@ class Agent_Agentflow implements INode {
                         sseStreamer.streamArtifactsEvent(chatId, flatten(artifacts))
                     }
                 }
-            } else if (!humanInput && !isStreamable && isLastNode && sseStreamer) {
+            } else if (!humanInput && !isStreamable && isLastNode && sseStreamer && !isStructuredOutput) {
                 // Stream whole response back to UI if not streaming and no tool calls
-                let responseContent = JSON.stringify(response, null, 2)
-                if (typeof response.content === 'string') {
-                    responseContent = response.content
+                // Skip this if structured output is enabled - it will be streamed after conversion
+                let finalResponse = ''
+                if (response.content && Array.isArray(response.content)) {
+                    finalResponse = response.content
+                        .map((item: any) => {
+                            if ((item.text && !item.type) || (item.type === 'text' && item.text)) {
+                                return item.text
+                            }
+                            return ''
+                        })
+                        .filter((text: string) => text)
+                        .join('\n')
+                } else if (response.content && typeof response.content === 'string') {
+                    finalResponse = response.content
+                } else {
+                    finalResponse = JSON.stringify(response, null, 2)
                 }
-                sseStreamer.streamTokenEvent(chatId, responseContent)
+                sseStreamer.streamTokenEvent(chatId, finalResponse)
             }
 
             // Calculate execution time
@@ -948,12 +1247,121 @@ class Agent_Agentflow implements INode {
             // Prepare final response and output object
             let finalResponse = ''
             if (response.content && Array.isArray(response.content)) {
-                finalResponse = response.content.map((item: any) => item.text).join('\n')
+                // Process items and concatenate consecutive text items
+                const processedParts: string[] = []
+                let currentTextBuffer = ''
+
+                for (const item of response.content) {
+                    const itemAny = item as any
+                    const isTextItem = (itemAny.text && !itemAny.type) || (itemAny.type === 'text' && itemAny.text)
+
+                    if (isTextItem) {
+                        // Accumulate consecutive text items
+                        currentTextBuffer += itemAny.text
+                    } else {
+                        // Flush accumulated text before processing other types
+                        if (currentTextBuffer) {
+                            processedParts.push(currentTextBuffer)
+                            currentTextBuffer = ''
+                        }
+
+                        // Process non-text items
+                        if (itemAny.type === 'executableCode' && itemAny.executableCode) {
+                            // Format executable code as a code block
+                            const language = itemAny.executableCode.language?.toLowerCase() || 'python'
+                            processedParts.push(`\n\`\`\`${language}\n${itemAny.executableCode.code}\n\`\`\`\n`)
+                        } else if (itemAny.type === 'codeExecutionResult' && itemAny.codeExecutionResult) {
+                            // Format code execution result
+                            const outcome = itemAny.codeExecutionResult.outcome || 'OUTCOME_OK'
+                            const output = itemAny.codeExecutionResult.output || ''
+                            if (outcome === 'OUTCOME_OK' && output) {
+                                processedParts.push(`**Code Output:**\n\`\`\`\n${output}\n\`\`\`\n`)
+                            } else if (outcome !== 'OUTCOME_OK') {
+                                processedParts.push(`**Code Execution Error:**\n\`\`\`\n${output}\n\`\`\`\n`)
+                            }
+                        }
+                    }
+                }
+
+                // Flush any remaining text
+                if (currentTextBuffer) {
+                    processedParts.push(currentTextBuffer)
+                }
+
+                finalResponse = processedParts.filter((text) => text).join('\n')
             } else if (response.content && typeof response.content === 'string') {
                 finalResponse = response.content
+            } else if (response.content === '') {
+                // Empty response content, this could happen when there is only image data
+                finalResponse = ''
             } else {
                 finalResponse = JSON.stringify(response, null, 2)
             }
+
+            // Address built in tools
+            const additionalBuiltInUsedTools: IUsedTool[] = await this.extractBuiltInUsedTools(response, builtInUsedTools)
+            if (additionalBuiltInUsedTools.length > 0) {
+                usedTools = [...new Set([...usedTools, ...additionalBuiltInUsedTools])]
+
+                // Stream used tools if this is the last node
+                if (isLastNode && sseStreamer) {
+                    sseStreamer.streamUsedToolsEvent(chatId, flatten(usedTools))
+                }
+            }
+
+            // Extract artifacts from annotations in response metadata and replace inline data
+            if (response.response_metadata) {
+                const {
+                    artifacts: extractedArtifacts,
+                    fileAnnotations: extractedFileAnnotations,
+                    savedInlineImages
+                } = await extractArtifactsFromResponse(response.response_metadata, newNodeData, options)
+                if (extractedArtifacts.length > 0) {
+                    artifacts = [...artifacts, ...extractedArtifacts]
+
+                    // Stream artifacts if this is the last node
+                    if (isLastNode && sseStreamer) {
+                        sseStreamer.streamArtifactsEvent(chatId, extractedArtifacts)
+                    }
+                }
+
+                if (extractedFileAnnotations.length > 0) {
+                    fileAnnotations = [...fileAnnotations, ...extractedFileAnnotations]
+
+                    // Stream file annotations if this is the last node
+                    if (isLastNode && sseStreamer) {
+                        sseStreamer.streamFileAnnotationsEvent(chatId, fileAnnotations)
+                    }
+                }
+
+                // Replace inlineData base64 with file references in the response
+                if (savedInlineImages && savedInlineImages.length > 0) {
+                    replaceInlineDataWithFileReferences(response, savedInlineImages)
+                }
+            }
+
+            // Replace sandbox links with proper download URLs. Example: [Download the script](sandbox:/mnt/data/dummy_bar_graph.py)
+            if (finalResponse.includes('sandbox:/')) {
+                finalResponse = await this.processSandboxLinks(finalResponse, options.baseURL, options.chatflowid, chatId)
+            }
+
+            // If is structured output, then invoke LLM again with structured output at the very end after all tool calls
+            if (isStructuredOutput) {
+                llmNodeInstance = configureStructuredOutput(llmNodeInstance, _agentStructuredOutput)
+                const prompt = 'Convert the following response to the structured output format: ' + finalResponse
+                response = await llmNodeInstance.invoke(prompt, { signal: abortController?.signal })
+
+                if (typeof response === 'object') {
+                    finalResponse = '```json\n' + JSON.stringify(response, null, 2) + '\n```'
+                } else {
+                    finalResponse = response
+                }
+
+                if (isLastNode && sseStreamer) {
+                    sseStreamer.streamTokenEvent(chatId, finalResponse)
+                }
+            }
+
             const output = this.prepareOutputObject(
                 response,
                 availableTools,
@@ -965,7 +1373,9 @@ class Agent_Agentflow implements INode {
                 sourceDocuments,
                 artifacts,
                 additionalTokens,
-                isWaitingForHumanInput
+                isWaitingForHumanInput,
+                fileAnnotations,
+                isStructuredOutput
             )
 
             // End analytics tracking
@@ -978,18 +1388,25 @@ class Agent_Agentflow implements INode {
                 this.sendStreamingEvents(options, chatId, response)
             }
 
-            // Process template variables in state
-            if (newState && Object.keys(newState).length > 0) {
-                for (const key in newState) {
-                    if (newState[key].toString().includes('{{ output }}')) {
-                        newState[key] = finalResponse
-                    }
-                }
+            // Stream file annotations if any were extracted
+            if (fileAnnotations.length > 0 && isLastNode && sseStreamer) {
+                sseStreamer.streamFileAnnotationsEvent(chatId, fileAnnotations)
             }
+
+            // Process template variables in state
+            const outputForStateProcessing =
+                isStructuredOutput && typeof response === 'object' ? JSON.stringify(response, null, 2) : finalResponse
+            newState = processTemplateVariables(newState, outputForStateProcessing)
+
+            /**
+             * Remove the temporarily added image artifact messages before storing
+             * This is to avoid storing the actual base64 data into database
+             */
+            const messagesToStore = messages.filter((msg: any) => !msg._isTemporaryImageMessage)
 
             // Replace the actual messages array with one that includes the file references for images instead of base64 data
             const messagesWithFileReferences = replaceBase64ImagesWithFileReferences(
-                messages,
+                messagesToStore,
                 runtimeImageMessagesWithFileRef,
                 pastImageMessagesWithFileRef
             )
@@ -1043,7 +1460,16 @@ class Agent_Agentflow implements INode {
                     {
                         role: returnRole,
                         content: finalResponse,
-                        name: nodeData?.label ? nodeData?.label.toLowerCase().replace(/\s/g, '_').trim() : nodeData?.id
+                        name: nodeData?.label ? nodeData?.label.toLowerCase().replace(/\s/g, '_').trim() : nodeData?.id,
+                        ...(((artifacts && artifacts.length > 0) ||
+                            (fileAnnotations && fileAnnotations.length > 0) ||
+                            (usedTools && usedTools.length > 0)) && {
+                            additional_kwargs: {
+                                ...(artifacts && artifacts.length > 0 && { artifacts }),
+                                ...(fileAnnotations && fileAnnotations.length > 0 && { fileAnnotations }),
+                                ...(usedTools && usedTools.length > 0 && { usedTools })
+                            }
+                        })
                     }
                 ]
             }
@@ -1057,6 +1483,150 @@ class Agent_Agentflow implements INode {
             }
             throw new Error(`Error in Agent node: ${error instanceof Error ? error.message : String(error)}`)
         }
+    }
+
+    /**
+     * Extracts built-in used tools from response metadata and processes image generation results
+     */
+    private async extractBuiltInUsedTools(response: AIMessageChunk, builtInUsedTools: IUsedTool[] = []): Promise<IUsedTool[]> {
+        if (!response.response_metadata) {
+            return builtInUsedTools
+        }
+
+        const { output, tools, groundingMetadata, urlContextMetadata } = response.response_metadata
+
+        // Handle OpenAI built-in tools
+        if (output && Array.isArray(output) && output.length > 0 && tools && Array.isArray(tools) && tools.length > 0) {
+            for (const outputItem of output) {
+                if (outputItem.type && outputItem.type.endsWith('_call')) {
+                    let toolInput = outputItem.action ?? outputItem.code
+                    let toolOutput = outputItem.status === 'completed' ? 'Success' : outputItem.status
+
+                    // Handle image generation calls specially
+                    if (outputItem.type === 'image_generation_call') {
+                        // Create input summary for image generation
+                        toolInput = {
+                            prompt: outputItem.revised_prompt || 'Image generation request',
+                            size: outputItem.size || '1024x1024',
+                            quality: outputItem.quality || 'standard',
+                            output_format: outputItem.output_format || 'png'
+                        }
+
+                        // Check if image has been processed (base64 replaced with file path)
+                        if (outputItem.result && !outputItem.result.startsWith('data:') && !outputItem.result.includes('base64')) {
+                            toolOutput = `Image generated and saved`
+                        } else {
+                            toolOutput = `Image generated (base64)`
+                        }
+                    }
+
+                    // Remove "_call" suffix to get the base tool name
+                    const baseToolName = outputItem.type.replace('_call', '')
+
+                    // Find matching tool that includes the base name in its type
+                    const matchingTool = tools.find((tool) => tool.type && tool.type.includes(baseToolName))
+
+                    if (matchingTool) {
+                        // Check for duplicates
+                        if (builtInUsedTools.find((tool) => tool.tool === matchingTool.type)) {
+                            continue
+                        }
+
+                        builtInUsedTools.push({
+                            tool: matchingTool.type,
+                            toolInput,
+                            toolOutput
+                        })
+                    }
+                }
+            }
+        }
+
+        // Handle Gemini googleSearch tool
+        if (groundingMetadata && groundingMetadata.webSearchQueries && Array.isArray(groundingMetadata.webSearchQueries)) {
+            // Check for duplicates
+            const isDuplicate = builtInUsedTools.find(
+                (tool) =>
+                    tool.tool === 'googleSearch' &&
+                    JSON.stringify((tool.toolInput as any)?.queries) === JSON.stringify(groundingMetadata.webSearchQueries)
+            )
+            if (!isDuplicate) {
+                builtInUsedTools.push({
+                    tool: 'googleSearch',
+                    toolInput: {
+                        queries: groundingMetadata.webSearchQueries
+                    },
+                    toolOutput: `Searched for: ${groundingMetadata.webSearchQueries.join(', ')}`
+                })
+            }
+        }
+
+        // Handle Gemini urlContext tool
+        if (urlContextMetadata && urlContextMetadata.urlMetadata && Array.isArray(urlContextMetadata.urlMetadata)) {
+            // Check for duplicates
+            const isDuplicate = builtInUsedTools.find(
+                (tool) =>
+                    tool.tool === 'urlContext' &&
+                    JSON.stringify((tool.toolInput as any)?.urlMetadata) === JSON.stringify(urlContextMetadata.urlMetadata)
+            )
+            if (!isDuplicate) {
+                builtInUsedTools.push({
+                    tool: 'urlContext',
+                    toolInput: {
+                        urlMetadata: urlContextMetadata.urlMetadata
+                    },
+                    toolOutput: `Processed ${urlContextMetadata.urlMetadata.length} URL(s)`
+                })
+            }
+        }
+
+        // Handle Gemini codeExecution tool
+        if (response.content && Array.isArray(response.content)) {
+            for (let i = 0; i < response.content.length; i++) {
+                const item = response.content[i]
+
+                if (item.type === 'executableCode' && item.executableCode) {
+                    const language = item.executableCode.language || 'PYTHON'
+                    const code = item.executableCode.code || ''
+                    let toolOutput = ''
+
+                    // Check for duplicates
+                    const isDuplicate = builtInUsedTools.find(
+                        (tool) =>
+                            tool.tool === 'codeExecution' &&
+                            (tool.toolInput as any)?.language === language &&
+                            (tool.toolInput as any)?.code === code
+                    )
+                    if (isDuplicate) {
+                        continue
+                    }
+
+                    // Check the next item for the output
+                    const nextItem = i + 1 < response.content.length ? response.content[i + 1] : null
+
+                    if (nextItem) {
+                        if (nextItem.type === 'codeExecutionResult' && nextItem.codeExecutionResult) {
+                            const outcome = nextItem.codeExecutionResult.outcome
+                            const output = nextItem.codeExecutionResult.output || ''
+                            toolOutput = outcome === 'OUTCOME_OK' ? output : `Error: ${output}`
+                        } else if (nextItem.type === 'inlineData') {
+                            toolOutput = 'Generated image data'
+                        }
+                    }
+
+                    builtInUsedTools.push({
+                        tool: 'codeExecution',
+                        toolInput: {
+                            language,
+                            code
+                        },
+                        toolOutput
+                    })
+                }
+            }
+        }
+
+        return builtInUsedTools
     }
 
     /**
@@ -1221,32 +1791,62 @@ class Agent_Agentflow implements INode {
         llmNodeInstance: BaseChatModel,
         messages: BaseMessageLike[],
         chatId: string,
-        abortController: AbortController
+        abortController: AbortController,
+        isStructuredOutput: boolean = false
     ): Promise<AIMessageChunk> {
         let response = new AIMessageChunk('')
 
         try {
             for await (const chunk of await llmNodeInstance.stream(messages, { signal: abortController?.signal })) {
-                if (sseStreamer) {
+                if (sseStreamer && !isStructuredOutput) {
                     let content = ''
-                    if (Array.isArray(chunk.content) && chunk.content.length > 0) {
-                        const contents = chunk.content as MessageContentText[]
-                        content = contents.map((item) => item.text).join('')
-                    } else {
+
+                    if (typeof chunk === 'string') {
+                        content = chunk
+                    } else if (Array.isArray(chunk.content) && chunk.content.length > 0) {
+                        content = chunk.content
+                            .map((item: any) => {
+                                if ((item.text && !item.type) || (item.type === 'text' && item.text)) {
+                                    return item.text
+                                } else if (item.type === 'executableCode' && item.executableCode) {
+                                    const language = item.executableCode.language?.toLowerCase() || 'python'
+                                    return `\n\`\`\`${language}\n${item.executableCode.code}\n\`\`\`\n`
+                                } else if (item.type === 'codeExecutionResult' && item.codeExecutionResult) {
+                                    const outcome = item.codeExecutionResult.outcome || 'OUTCOME_OK'
+                                    const output = item.codeExecutionResult.output || ''
+                                    if (outcome === 'OUTCOME_OK' && output) {
+                                        return `**Code Output:**\n\`\`\`\n${output}\n\`\`\`\n`
+                                    } else if (outcome !== 'OUTCOME_OK') {
+                                        return `**Code Execution Error:**\n\`\`\`\n${output}\n\`\`\`\n`
+                                    }
+                                }
+                                return ''
+                            })
+                            .filter((text: string) => text)
+                            .join('')
+                    } else if (chunk.content) {
                         content = chunk.content.toString()
                     }
                     sseStreamer.streamTokenEvent(chatId, content)
                 }
 
-                response = response.concat(chunk)
+                const messageChunk = typeof chunk === 'string' ? new AIMessageChunk(chunk) : chunk
+                response = response.concat(messageChunk)
             }
         } catch (error) {
             console.error('Error during streaming:', error)
             throw error
         }
+
+        // Only convert to string if all content items are text (no inlineData or other special types)
         if (Array.isArray(response.content) && response.content.length > 0) {
-            const responseContents = response.content as MessageContentText[]
-            response.content = responseContents.map((item) => item.text).join('')
+            const hasNonTextContent = response.content.some(
+                (item: any) => item.type === 'inlineData' || item.type === 'executableCode' || item.type === 'codeExecutionResult'
+            )
+            if (!hasNonTextContent) {
+                const responseContents = response.content as MessageContentText[]
+                response.content = responseContents.map((item) => item.text).join('')
+            }
         }
         return response
     }
@@ -1265,7 +1865,9 @@ class Agent_Agentflow implements INode {
         sourceDocuments: Array<any>,
         artifacts: any[],
         additionalTokens: number = 0,
-        isWaitingForHumanInput: boolean = false
+        isWaitingForHumanInput: boolean = false,
+        fileAnnotations: any[] = [],
+        isStructuredOutput: boolean = false
     ): any {
         const output: any = {
             content: finalResponse,
@@ -1296,6 +1898,19 @@ class Agent_Agentflow implements INode {
             }
         }
 
+        if (response.response_metadata) {
+            output.responseMetadata = response.response_metadata
+        }
+
+        if (isStructuredOutput && typeof response === 'object') {
+            const structuredOutput = response as Record<string, any>
+            for (const key in structuredOutput) {
+                if (structuredOutput[key] !== undefined && structuredOutput[key] !== null) {
+                    output[key] = structuredOutput[key]
+                }
+            }
+        }
+
         // Add used tools, source documents and artifacts to output
         if (usedTools && usedTools.length > 0) {
             output.usedTools = flatten(usedTools)
@@ -1317,6 +1932,10 @@ class Agent_Agentflow implements INode {
             output.isWaitingForHumanInput = isWaitingForHumanInput
         }
 
+        if (fileAnnotations && fileAnnotations.length > 0) {
+            output.fileAnnotations = fileAnnotations
+        }
+
         return output
     }
 
@@ -1327,7 +1946,12 @@ class Agent_Agentflow implements INode {
         const sseStreamer: IServerSideEventStreamer = options.sseStreamer as IServerSideEventStreamer
 
         if (response.tool_calls) {
-            sseStreamer.streamCalledToolsEvent(chatId, response.tool_calls)
+            const formattedToolCalls = response.tool_calls.map((toolCall: any) => ({
+                tool: toolCall.name || 'tool',
+                toolInput: toolCall.args,
+                toolOutput: ''
+            }))
+            sseStreamer.streamCalledToolsEvent(chatId, flatten(formattedToolCalls))
         }
 
         if (response.usage_metadata) {
@@ -1352,7 +1976,8 @@ class Agent_Agentflow implements INode {
         llmNodeInstance,
         isStreamable,
         isLastNode,
-        iterationContext
+        iterationContext,
+        isStructuredOutput = false
     }: {
         response: AIMessageChunk
         messages: BaseMessageLike[]
@@ -1366,6 +1991,7 @@ class Agent_Agentflow implements INode {
         isStreamable: boolean
         isLastNode: boolean
         iterationContext: ICommonObject
+        isStructuredOutput?: boolean
     }): Promise<{
         response: AIMessageChunk
         usedTools: IUsedTool[]
@@ -1376,6 +2002,10 @@ class Agent_Agentflow implements INode {
     }> {
         // Track total tokens used throughout this process
         let totalTokens = response.usage_metadata?.total_tokens || 0
+        const usedTools: IUsedTool[] = []
+        let sourceDocuments: Array<any> = []
+        let artifacts: any[] = []
+        let isWaitingForHumanInput: boolean | undefined
 
         if (!response.tool_calls || response.tool_calls.length === 0) {
             return { response, usedTools: [], sourceDocuments: [], artifacts: [], totalTokens }
@@ -1383,7 +2013,30 @@ class Agent_Agentflow implements INode {
 
         // Stream tool calls if available
         if (sseStreamer) {
-            sseStreamer.streamCalledToolsEvent(chatId, JSON.stringify(response.tool_calls))
+            const formattedToolCalls = response.tool_calls.map((toolCall: any) => ({
+                tool: toolCall.name || 'tool',
+                toolInput: toolCall.args,
+                toolOutput: ''
+            }))
+            sseStreamer.streamCalledToolsEvent(chatId, flatten(formattedToolCalls))
+        }
+
+        // Remove tool calls with no id
+        const toBeRemovedToolCalls = []
+        for (let i = 0; i < response.tool_calls.length; i++) {
+            const toolCall = response.tool_calls[i]
+            if (!toolCall.id) {
+                toBeRemovedToolCalls.push(toolCall)
+                usedTools.push({
+                    tool: toolCall.name || 'tool',
+                    toolInput: toolCall.args,
+                    toolOutput: response.content
+                })
+            }
+        }
+
+        for (const toolCall of toBeRemovedToolCalls) {
+            response.tool_calls.splice(response.tool_calls.indexOf(toolCall), 1)
         }
 
         // Add LLM response with tool calls to messages
@@ -1394,11 +2047,6 @@ class Agent_Agentflow implements INode {
             tool_calls: response.tool_calls,
             usage_metadata: response.usage_metadata
         })
-
-        const usedTools: IUsedTool[] = []
-        let sourceDocuments: Array<any> = []
-        let artifacts: any[] = []
-        let isWaitingForHumanInput: boolean | undefined
 
         // Process each tool call
         for (let i = 0; i < response.tool_calls.length; i++) {
@@ -1412,6 +2060,7 @@ class Agent_Agentflow implements INode {
                     (selectedTool as any).requiresHumanInput && (!iterationContext || Object.keys(iterationContext).length === 0)
 
                 const flowConfig = {
+                    chatflowId: options.chatflowid,
                     sessionId: options.sessionId,
                     chatId: options.chatId,
                     input: input,
@@ -1422,7 +2071,9 @@ class Agent_Agentflow implements INode {
                     const toolCallDetails = '```json\n' + JSON.stringify(toolCall, null, 2) + '\n```'
                     const responseContent = response.content + `\nAttempting to use tool:\n${toolCallDetails}`
                     response.content = responseContent
-                    sseStreamer?.streamTokenEvent(chatId, responseContent)
+                    if (!isStructuredOutput) {
+                        sseStreamer?.streamTokenEvent(chatId, responseContent)
+                    }
                     return { response, usedTools, sourceDocuments, artifacts, totalTokens, isWaitingForHumanInput: true }
                 }
 
@@ -1498,9 +2149,20 @@ class Agent_Agentflow implements INode {
                     }
 
                     console.error('Error invoking tool:', e)
+                    const errMsg = getErrorMessage(e)
+                    let toolInput = toolCall.args
+                    if (typeof errMsg === 'string' && errMsg.includes(TOOL_ARGS_PREFIX)) {
+                        const [_, args] = errMsg.split(TOOL_ARGS_PREFIX)
+                        try {
+                            toolInput = JSON.parse(args)
+                        } catch (e) {
+                            console.error('Error parsing tool input from tool:', e)
+                        }
+                    }
+
                     usedTools.push({
                         tool: selectedTool.name,
-                        toolInput: toolCall.args,
+                        toolInput,
                         toolOutput: '',
                         error: getErrorMessage(e)
                     })
@@ -1517,7 +2179,7 @@ class Agent_Agentflow implements INode {
                 const lastToolOutput = usedTools[0]?.toolOutput || ''
                 const lastToolOutputString = typeof lastToolOutput === 'string' ? lastToolOutput : JSON.stringify(lastToolOutput, null, 2)
 
-                if (sseStreamer) {
+                if (sseStreamer && !isStructuredOutput) {
                     sseStreamer.streamTokenEvent(chatId, lastToolOutputString)
                 }
 
@@ -1531,16 +2193,34 @@ class Agent_Agentflow implements INode {
             }
         }
 
+        if (response.tool_calls.length === 0) {
+            const responseContent = typeof response.content === 'string' ? response.content : JSON.stringify(response.content, null, 2)
+            return {
+                response: new AIMessageChunk(responseContent),
+                usedTools,
+                sourceDocuments,
+                artifacts,
+                totalTokens
+            }
+        }
+
         // Get LLM response after tool calls
         let newResponse: AIMessageChunk
 
         if (isStreamable) {
-            newResponse = await this.handleStreamingResponse(sseStreamer, llmNodeInstance, messages, chatId, abortController)
+            newResponse = await this.handleStreamingResponse(
+                sseStreamer,
+                llmNodeInstance,
+                messages,
+                chatId,
+                abortController,
+                isStructuredOutput
+            )
         } else {
             newResponse = await llmNodeInstance.invoke(messages, { signal: abortController?.signal })
 
             // Stream non-streaming response if this is the last node
-            if (isLastNode && sseStreamer) {
+            if (isLastNode && sseStreamer && !isStructuredOutput) {
                 let responseContent = JSON.stringify(newResponse, null, 2)
                 if (typeof newResponse.content === 'string') {
                     responseContent = newResponse.content
@@ -1575,7 +2255,8 @@ class Agent_Agentflow implements INode {
                 llmNodeInstance,
                 isStreamable,
                 isLastNode,
-                iterationContext
+                iterationContext,
+                isStructuredOutput
             })
 
             // Merge results from recursive tool calls
@@ -1606,7 +2287,8 @@ class Agent_Agentflow implements INode {
         llmWithoutToolsBind,
         isStreamable,
         isLastNode,
-        iterationContext
+        iterationContext,
+        isStructuredOutput = false
     }: {
         humanInput: IHumanInput
         humanInputAction: Record<string, any> | undefined
@@ -1621,6 +2303,7 @@ class Agent_Agentflow implements INode {
         isStreamable: boolean
         isLastNode: boolean
         iterationContext: ICommonObject
+        isStructuredOutput?: boolean
     }): Promise<{
         response: AIMessageChunk
         usedTools: IUsedTool[]
@@ -1630,6 +2313,10 @@ class Agent_Agentflow implements INode {
         isWaitingForHumanInput?: boolean
     }> {
         let llmNodeInstance = llmWithoutToolsBind
+        const usedTools: IUsedTool[] = []
+        let sourceDocuments: Array<any> = []
+        let artifacts: any[] = []
+        let isWaitingForHumanInput: boolean | undefined
 
         const lastCheckpointMessages = humanInputAction?.data?.input?.messages ?? []
         if (!lastCheckpointMessages.length) {
@@ -1652,7 +2339,30 @@ class Agent_Agentflow implements INode {
 
         // Stream tool calls if available
         if (sseStreamer) {
-            sseStreamer.streamCalledToolsEvent(chatId, JSON.stringify(response.tool_calls))
+            const formattedToolCalls = response.tool_calls.map((toolCall: any) => ({
+                tool: toolCall.name || 'tool',
+                toolInput: toolCall.args,
+                toolOutput: ''
+            }))
+            sseStreamer.streamCalledToolsEvent(chatId, flatten(formattedToolCalls))
+        }
+
+        // Remove tool calls with no id
+        const toBeRemovedToolCalls = []
+        for (let i = 0; i < response.tool_calls.length; i++) {
+            const toolCall = response.tool_calls[i]
+            if (!toolCall.id) {
+                toBeRemovedToolCalls.push(toolCall)
+                usedTools.push({
+                    tool: toolCall.name || 'tool',
+                    toolInput: toolCall.args,
+                    toolOutput: response.content
+                })
+            }
+        }
+
+        for (const toolCall of toBeRemovedToolCalls) {
+            response.tool_calls.splice(response.tool_calls.indexOf(toolCall), 1)
         }
 
         // Add LLM response with tool calls to messages
@@ -1664,11 +2374,6 @@ class Agent_Agentflow implements INode {
             usage_metadata: response.usage_metadata
         })
 
-        const usedTools: IUsedTool[] = []
-        let sourceDocuments: Array<any> = []
-        let artifacts: any[] = []
-        let isWaitingForHumanInput: boolean | undefined
-
         // Process each tool call
         for (let i = 0; i < response.tool_calls.length; i++) {
             const toolCall = response.tool_calls[i]
@@ -1679,6 +2384,7 @@ class Agent_Agentflow implements INode {
                 let parsedArtifacts
 
                 const flowConfig = {
+                    chatflowId: options.chatflowid,
                     sessionId: options.sessionId,
                     chatId: options.chatId,
                     input: input,
@@ -1769,9 +2475,20 @@ class Agent_Agentflow implements INode {
                         }
 
                         console.error('Error invoking tool:', e)
+                        const errMsg = getErrorMessage(e)
+                        let toolInput = toolCall.args
+                        if (typeof errMsg === 'string' && errMsg.includes(TOOL_ARGS_PREFIX)) {
+                            const [_, args] = errMsg.split(TOOL_ARGS_PREFIX)
+                            try {
+                                toolInput = JSON.parse(args)
+                            } catch (e) {
+                                console.error('Error parsing tool input from tool:', e)
+                            }
+                        }
+
                         usedTools.push({
                             tool: selectedTool.name,
-                            toolInput: toolCall.args,
+                            toolInput,
                             toolOutput: '',
                             error: getErrorMessage(e)
                         })
@@ -1789,7 +2506,7 @@ class Agent_Agentflow implements INode {
                 const lastToolOutput = usedTools[0]?.toolOutput || ''
                 const lastToolOutputString = typeof lastToolOutput === 'string' ? lastToolOutput : JSON.stringify(lastToolOutput, null, 2)
 
-                if (sseStreamer) {
+                if (sseStreamer && !isStructuredOutput) {
                     sseStreamer.streamTokenEvent(chatId, lastToolOutputString)
                 }
 
@@ -1806,6 +2523,10 @@ class Agent_Agentflow implements INode {
         // Get LLM response after tool calls
         let newResponse: AIMessageChunk
 
+        if (llmNodeInstance && (llmNodeInstance as any).builtInTools && (llmNodeInstance as any).builtInTools.length > 0) {
+            toolsInstance.push(...(llmNodeInstance as any).builtInTools)
+        }
+
         if (llmNodeInstance && toolsInstance.length > 0) {
             if (llmNodeInstance.bindTools === undefined) {
                 throw new Error(`Agent needs to have a function calling capable models.`)
@@ -1816,12 +2537,19 @@ class Agent_Agentflow implements INode {
         }
 
         if (isStreamable) {
-            newResponse = await this.handleStreamingResponse(sseStreamer, llmNodeInstance, messages, chatId, abortController)
+            newResponse = await this.handleStreamingResponse(
+                sseStreamer,
+                llmNodeInstance,
+                messages,
+                chatId,
+                abortController,
+                isStructuredOutput
+            )
         } else {
             newResponse = await llmNodeInstance.invoke(messages, { signal: abortController?.signal })
 
             // Stream non-streaming response if this is the last node
-            if (isLastNode && sseStreamer) {
+            if (isLastNode && sseStreamer && !isStructuredOutput) {
                 let responseContent = JSON.stringify(newResponse, null, 2)
                 if (typeof newResponse.content === 'string') {
                     responseContent = newResponse.content
@@ -1856,7 +2584,8 @@ class Agent_Agentflow implements INode {
                 llmNodeInstance,
                 isStreamable,
                 isLastNode,
-                iterationContext
+                iterationContext,
+                isStructuredOutput
             })
 
             // Merge results from recursive tool calls
@@ -1869,6 +2598,40 @@ class Agent_Agentflow implements INode {
         }
 
         return { response: newResponse, usedTools, sourceDocuments, artifacts, totalTokens, isWaitingForHumanInput }
+    }
+
+    /**
+     * Processes sandbox links in the response text and converts them to file annotations
+     */
+    private async processSandboxLinks(text: string, baseURL: string, chatflowId: string, chatId: string): Promise<string> {
+        let processedResponse = text
+
+        // Regex to match sandbox links: [text](sandbox:/path/to/file)
+        const sandboxLinkRegex = /\[([^\]]+)\]\(sandbox:\/([^)]+)\)/g
+        const matches = Array.from(text.matchAll(sandboxLinkRegex))
+
+        for (const match of matches) {
+            const fullMatch = match[0]
+            const linkText = match[1]
+            const filePath = match[2]
+
+            try {
+                // Extract filename from the file path
+                const fileName = filePath.split('/').pop() || filePath
+
+                // Replace sandbox link with proper download URL
+                const downloadUrl = `${baseURL}/api/v1/get-upload-file?chatflowId=${chatflowId}&chatId=${chatId}&fileName=${fileName}&download=true`
+                const newLink = `[${linkText}](${downloadUrl})`
+
+                processedResponse = processedResponse.replace(fullMatch, newLink)
+            } catch (error) {
+                console.error('Error processing sandbox link:', error)
+                // If there's an error, remove the sandbox link as fallback
+                processedResponse = processedResponse.replace(fullMatch, linkText)
+            }
+        }
+
+        return processedResponse
     }
 }
 
